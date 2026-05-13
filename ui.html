@@ -1,0 +1,3478 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>文件收纳箱</title>
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<style>
+/* ===========================================================
+   全局变量 & 主题
+   =========================================================== */
+:root{
+    --primary:#6366f1;
+    --primary-hover:#4f46e5;
+    --primary-light:#eef2ff;
+    --bg:#f5f7fa;
+    --bg-card:#ffffff;
+    --bg-sidebar:#1e293b;
+    --bg-sidebar-hover:#334155;
+    --text:#1e293b;
+    --text-sub:#64748b;
+    --text-light:#94a3b8;
+    --text-sidebar:#cbd5e1;
+    --border:#e2e8f0;
+    --hover:#f1f5f9;
+    --danger:#ef4444;
+    --success:#10b981;
+    --radius:10px;
+    --radius-sm:6px;
+    --shadow-sm:0 1px 2px rgba(0,0,0,.04);
+    --shadow:0 4px 12px rgba(0,0,0,.08);
+    --shadow-lg:0 10px 30px rgba(0,0,0,.12);
+    --transition:.2s ease;
+}
+
+*{margin:0;padding:0;box-sizing:border-box;
+  -webkit-user-select:none;user-select:none;
+  -webkit-tap-highlight-color:transparent;}
+
+html,body{height:100%;font-size:14px;color:var(--text);
+  font-family:"Segoe UI","Microsoft YaHei",-apple-system,sans-serif;
+  background:var(--bg);overflow:hidden;}
+
+img,video{display:block;}
+button{font-family:inherit;}
+
+/* 滚动条 */
+::-webkit-scrollbar{width:8px;height:8px;}
+::-webkit-scrollbar-track{background:transparent;}
+::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:4px;}
+::-webkit-scrollbar-thumb:hover{background:#94a3b8;}
+
+/* ===========================================================
+   总体布局
+   =========================================================== */
+#app{display:flex;height:100vh;}
+
+/* ===========================================================
+   侧边栏
+   =========================================================== */
+.sidebar{
+    width:240px;flex-shrink:0;
+    background:var(--bg-sidebar);
+    color:var(--text-sidebar);
+    display:flex;flex-direction:column;
+    padding:20px 0;
+}
+.sidebar-header{padding:0 24px 20px;border-bottom:1px solid rgba(255,255,255,.06);}
+.brand{display:flex;align-items:center;gap:10px;color:#fff;}
+.brand-logo{
+    width:36px;height:36px;border-radius:10px;
+    background:linear-gradient(135deg,#6366f1,#8b5cf6);
+    display:flex;align-items:center;justify-content:center;
+    font-size:18px;color:#fff;font-weight:700;
+}
+.brand-name{font-size:16px;font-weight:600;}
+.brand-tag{font-size:11px;opacity:.55;margin-top:2px;letter-spacing:.5px;}
+
+.nav{padding:14px 12px;flex:1;overflow-y:auto;}
+.nav-group-title{
+    font-size:11px;text-transform:uppercase;letter-spacing:1px;
+    color:var(--text-light);opacity:.6;
+    padding:14px 12px 8px;
+}
+.nav-item{
+    display:flex;align-items:center;gap:12px;
+    padding:10px 14px;margin:2px 0;border-radius:var(--radius-sm);
+    cursor:pointer;transition:var(--transition);
+    color:var(--text-sidebar);
+}
+.nav-item:hover{background:var(--bg-sidebar-hover);color:#fff;}
+.nav-item.active{background:var(--primary);color:#fff;box-shadow:0 4px 12px rgba(99,102,241,.4);}
+.nav-icon{width:18px;height:18px;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
+.nav-label{flex:1;font-weight:500;font-size:13.5px;}
+.nav-count{
+    font-size:11px;background:rgba(255,255,255,.1);
+    padding:2px 8px;border-radius:10px;min-width:24px;text-align:center;
+}
+.nav-item.active .nav-count{background:rgba(255,255,255,.25);}
+
+.sidebar-footer{padding:16px 24px;border-top:1px solid rgba(255,255,255,.06);
+    font-size:11px;color:var(--text-light);opacity:.6;line-height:1.6;}
+
+/* ===========================================================
+   主区域
+   =========================================================== */
+.main{flex:1;display:flex;flex-direction:column;min-width:0;}
+
+.topbar{
+    height:64px;background:#fff;border-bottom:1px solid var(--border);
+    padding:0 32px;display:flex;align-items:center;justify-content:space-between;
+    flex-shrink:0;
+}
+.topbar-title{font-size:20px;font-weight:600;color:var(--text);}
+.topbar-sub{font-size:12px;color:var(--text-sub);margin-top:2px;}
+.topbar-actions{display:flex;gap:10px;}
+.version-badge{font-size:11px;color:var(--text-sub);margin-left:4px;padding:2px 8px;background:var(--hover);border-radius:4px;font-weight:500;align-self:center;user-select:none;}
+
+.btn{
+    height:36px;padding:0 16px;border-radius:var(--radius-sm);
+    border:1px solid var(--border);background:#fff;color:var(--text);
+    cursor:pointer;display:inline-flex;align-items:center;gap:6px;
+    font-size:13px;font-weight:500;transition:var(--transition);
+}
+.btn:hover{border-color:var(--primary);color:var(--primary);background:var(--primary-light);}
+.btn-primary{background:var(--primary);color:#fff;border-color:var(--primary);}
+.btn-primary:hover{background:var(--primary-hover);color:#fff;}
+.btn-danger{background:var(--danger);color:#fff;border-color:var(--danger);}
+.btn-danger:hover{background:#dc2626;color:#fff;}
+.btn svg{width:16px;height:16px;}
+
+.content{flex:1;overflow-y:auto;padding:24px 32px;}
+
+/* ===========================================================
+   拖拽区
+   =========================================================== */
+.dropzone{
+    border:2px dashed var(--border);background:#fff;
+    border-radius:var(--radius);padding:36px;text-align:center;
+    transition:var(--transition);margin-bottom:24px;
+}
+.dropzone.drag-over{border-color:var(--primary);background:var(--primary-light);
+    transform:scale(1.01);}
+.dropzone-icon{
+    width:64px;height:64px;margin:0 auto 12px;
+    background:var(--primary-light);border-radius:50%;
+    display:flex;align-items:center;justify-content:center;color:var(--primary);
+}
+.dropzone-icon svg{width:32px;height:32px;}
+.dropzone h3{font-size:16px;margin-bottom:6px;font-weight:600;}
+.dropzone p{color:var(--text-sub);font-size:13px;margin-bottom:14px;}
+
+/* ===========================================================
+   目录卡片网格
+   =========================================================== */
+.section-title{font-size:13px;font-weight:600;color:var(--text-sub);
+    text-transform:uppercase;letter-spacing:.5px;margin-bottom:12px;}
+
+.folder-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px;}
+.folder-card{
+    background:#fff;border:1px solid var(--border);border-radius:var(--radius);
+    padding:16px;display:flex;align-items:center;gap:14px;
+    transition:var(--transition);box-shadow:var(--shadow-sm);
+    position:relative;cursor:pointer;
+}
+.folder-card:hover{transform:translateY(-2px);box-shadow:var(--shadow);
+    border-color:var(--primary);}
+.folder-card .file-checkbox{top:10px;left:10px;}
+.folder-card:hover .file-checkbox,.folder-card .file-checkbox.checked{opacity:1;}
+.folder-card-icon{
+    width:44px;height:44px;border-radius:10px;
+    background:linear-gradient(135deg,#fbbf24,#f59e0b);
+    display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0;
+}
+.folder-card-icon svg{width:24px;height:24px;}
+.folder-card-info{flex:1;min-width:0;}
+.folder-card-name{font-weight:600;font-size:14px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.folder-card-path{font-size:12px;color:var(--text-sub);
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:2px;
+    -webkit-user-select:text;user-select:text;}
+.folder-card-actions{display:flex;gap:4px;margin-left:auto;}
+
+.icon-btn{
+    width:32px;height:32px;border:none;background:transparent;
+    border-radius:var(--radius-sm);cursor:pointer;color:var(--text-sub);
+    display:inline-flex;align-items:center;justify-content:center;
+    transition:var(--transition);
+}
+.icon-btn:hover{background:var(--hover);color:var(--text);}
+.icon-btn.danger:hover{background:#fee2e2;color:var(--danger);}
+.icon-btn.btn-perm-delete{color:var(--danger);}
+.icon-btn.btn-perm-delete:hover{background:#fee2e2;}
+.icon-btn.btn-remove{color:var(--text-sub);}
+.icon-btn.btn-remove:hover{background:var(--hover);color:var(--text);border-color:var(--border);}
+.icon-btn svg{width:16px;height:16px;}
+
+/* ===========================================================
+   文件网格 (视频 / 图片)
+   =========================================================== */
+.file-grid{display:grid;gap:16px;}
+.file-grid.video,
+.file-grid.image{grid-template-columns:repeat(auto-fill,minmax(200px,1fr));}
+
+.file-card{
+    background:#fff;border:1px solid var(--border);border-radius:var(--radius);
+    overflow:hidden;cursor:pointer;transition:var(--transition);position:relative;
+    box-shadow:var(--shadow-sm);
+    /* 浏览器原生虚拟渲染：跳过视口外卡片的布局和绘制，大幅降低 DOM 开销 */
+    content-visibility:auto;
+    contain-intrinsic-size:auto 240px;
+}
+.file-card:hover{transform:translateY(-3px);box-shadow:var(--shadow-lg);}
+
+.file-thumb{
+    width:100%;aspect-ratio:4/3;background:#f1f5f9;position:relative;
+    display:flex;align-items:center;justify-content:center;
+    color:var(--text-light);overflow:hidden;
+}
+.file-thumb img{width:100%;height:100%;object-fit:cover;}
+.file-thumb-ph{font-size:36px;}
+.file-thumb-ph svg{width:48px;height:48px;}
+.file-thumb-badge{
+    position:absolute;right:8px;top:8px;
+    background:rgba(0,0,0,.65);color:#fff;
+    font-size:11px;padding:2px 8px;border-radius:4px;backdrop-filter:blur(4px);
+}
+.file-thumb-play{
+    position:absolute;inset:0;display:flex;align-items:center;justify-content:center;
+    background:rgba(0,0,0,.3);opacity:0;transition:var(--transition);
+}
+.file-card:hover .file-thumb-play{opacity:1;}
+.file-thumb-play svg{width:48px;height:48px;color:#fff;
+    filter:drop-shadow(0 2px 4px rgba(0,0,0,.5));}
+
+.file-meta{padding:10px 12px;}
+.file-name{font-size:13px;font-weight:500;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.file-info{
+    display:flex;justify-content:space-between;align-items:center;
+    font-size:11.5px;color:var(--text-sub);margin-top:4px;
+}
+
+/* ===========================================================
+   文档列表
+   =========================================================== */
+.doc-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:10px;}
+.doc-card{
+    background:#fff;border:1px solid var(--border);border-radius:var(--radius);
+    padding:12px 14px;display:flex;align-items:center;gap:12px;
+    cursor:pointer;transition:var(--transition);box-shadow:var(--shadow-sm);
+}
+.doc-card:hover{transform:translateY(-1px);box-shadow:var(--shadow);
+    border-color:var(--primary);}
+.doc-icon{
+    width:42px;height:42px;border-radius:8px;
+    display:flex;align-items:center;justify-content:center;color:#fff;
+    flex-shrink:0;font-weight:700;font-size:12px;
+}
+.doc-icon.pdf{background:#ef4444;}
+.doc-icon.doc{background:#2563eb;}
+.doc-icon.xls{background:#16a34a;}
+.doc-icon.ppt{background:#ea580c;}
+.doc-icon.txt{background:#64748b;}
+.doc-card-meta{flex:1;min-width:0;}
+.doc-card-name{font-weight:500;font-size:13px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.doc-card-info{font-size:11.5px;color:var(--text-sub);margin-top:2px;
+    display:flex;gap:12px;}
+.doc-card-actions{display:flex;gap:2px;}
+
+/* ===========================================================
+   状态视图 (空 / 加载)
+   =========================================================== */
+.empty{
+    text-align:center;padding:60px 20px;color:var(--text-sub);
+}
+.empty-icon{
+    width:80px;height:80px;margin:0 auto 16px;
+    background:var(--hover);border-radius:50%;
+    display:flex;align-items:center;justify-content:center;
+    color:var(--text-light);
+}
+.empty-icon svg{width:36px;height:36px;}
+.empty h3{font-size:15px;font-weight:600;margin-bottom:4px;color:var(--text);}
+.empty p{font-size:13px;}
+
+.loading{display:flex;align-items:center;justify-content:center;gap:12px;
+    padding:60px;color:var(--text-sub);}
+.spinner{
+    width:24px;height:24px;border:3px solid #e2e8f0;
+    border-top-color:var(--primary);border-radius:50%;
+    animation:spin .8s linear infinite;
+}
+@keyframes spin{to{transform:rotate(360deg);}}
+
+/* ===========================================================
+   模态框 (图片预览 / 视频播放 / 确认对话框)
+   =========================================================== */
+.modal-mask{
+    position:fixed;inset:0;background:rgba(15,23,42,.85);
+    display:flex;align-items:center;justify-content:center;
+    z-index:1000;backdrop-filter:blur(8px);
+    animation:fadeIn .2s ease;
+}
+@keyframes fadeIn{from{opacity:0;}to{opacity:1;}}
+
+.modal-close{
+    position:absolute;top:20px;right:24px;
+    width:44px;height:44px;border-radius:50%;
+    background:rgba(255,255,255,.12);color:#fff;
+    border:none;cursor:pointer;font-size:22px;
+    display:flex;align-items:center;justify-content:center;
+    z-index:1001;backdrop-filter:blur(8px);transition:var(--transition);
+}
+.modal-close:hover{background:rgba(255,255,255,.2);}
+.modal-info{
+    position:absolute;top:20px;left:24px;color:#fff;
+    background:rgba(255,255,255,.1);padding:10px 16px;border-radius:8px;
+    backdrop-filter:blur(8px);max-width:60vw;
+    -webkit-user-select:text;user-select:text;
+}
+.modal-info-name{font-weight:600;font-size:14px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.modal-info-path{font-size:11.5px;opacity:.7;margin-top:2px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+
+.modal-image{max-width:92vw;max-height:88vh;
+    box-shadow:0 20px 60px rgba(0,0,0,.5);border-radius:6px;}
+.modal-video{max-width:92vw;max-height:88vh;outline:none;
+    box-shadow:0 20px 60px rgba(0,0,0,.5);border-radius:6px;background:#000;}
+
+/* 模态框左右切换按钮 (图片/视频全局列表切换) */
+.modal-nav{
+    position:absolute;top:50%;transform:translateY(-50%);
+    width:48px;height:80px;border:none;border-radius:8px;
+    background:rgba(255,255,255,.15);color:#fff;
+    font-size:28px;cursor:pointer;backdrop-filter:blur(8px);
+    display:flex;align-items:center;justify-content:center;
+    transition:var(--transition);z-index:1001;
+}
+.modal-nav:hover{background:rgba(255,255,255,.3);}
+.modal-nav-prev{left:16px;}
+.modal-nav-next{right:16px;}
+.modal-nav.disabled{opacity:.25;pointer-events:none;}
+
+/* 自定义确认框 */
+.dialog{
+    background:#fff;border-radius:var(--radius);
+    padding:28px;width:420px;max-width:90vw;
+    box-shadow:0 20px 60px rgba(0,0,0,.3);
+    border:1px solid var(--border);
+}
+.dialog h3{font-size:18px;margin-bottom:12px;color:var(--text);font-weight:600;}
+.dialog p{font-size:14px;color:var(--text-sub);margin-bottom:24px;line-height:1.7;}
+.dialog-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:4px;}
+.dialog-actions .btn{height:36px;padding:0 18px;font-size:13px;font-weight:500;}
+
+/* ===========================================================
+   收藏功能相关样式
+   =========================================================== */
+/* 文件卡片上的收藏按钮 */
+.fav-btn{
+    position:absolute;top:8px;right:8px;z-index:10;
+    width:32px;height:32px;border:none;border-radius:50%;
+    background:rgba(0,0,0,.45);color:#fff;cursor:pointer;
+    display:flex;align-items:center;justify-content:center;
+    opacity:0;transition:opacity .2s ease,background .2s ease;
+    backdrop-filter:blur(4px);
+}
+.fav-btn:hover{background:rgba(0,0,0,.7);}
+.file-card:hover .fav-btn{opacity:1;}
+.fav-btn.active{color:#fbbf24;background:rgba(0,0,0,.6);opacity:1;}
+.fav-btn svg{width:16px;height:16px;}
+
+/* 收藏夹卡片 */
+.fav-group-card{
+    background:#fff;border:1px solid var(--border);border-radius:var(--radius);
+    padding:20px;display:flex;align-items:center;gap:14px;cursor:pointer;
+    transition:var(--transition);box-shadow:var(--shadow-sm);
+}
+.fav-group-card:hover{transform:translateY(-2px);box-shadow:var(--shadow);border-color:var(--primary);}
+.fav-group-card-icon{
+    width:48px;height:48px;border-radius:12px;
+    background:linear-gradient(135deg,#f59e0b,#ef4444);
+    display:flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0;
+}
+.fav-group-card-icon svg{width:24px;height:24px;}
+.fav-group-card-info{flex:1;min-width:0;}
+.fav-group-card-name{font-weight:600;font-size:15px;
+    white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.fav-group-card-count{font-size:12px;color:var(--text-sub);margin-top:3px;}
+.fav-group-card-actions{display:flex;gap:4px;}
+
+/* 收藏弹窗 */
+.fav-dialog-body{max-height:60vh;overflow-y:auto;}
+.fav-dialog-groups{display:flex;flex-direction:column;gap:8px;margin-bottom:16px;}
+.fav-dialog-group-item{
+    padding:12px 14px;border:1px solid var(--border);border-radius:var(--radius-sm);
+    cursor:pointer;transition:var(--transition);display:flex;align-items:center;gap:10px;
+    background:#fff;
+}
+.fav-dialog-group-item:hover{border-color:var(--primary);background:var(--primary-light);}
+.fav-dialog-group-item .name{flex:1;font-weight:500;font-size:14px;}
+.fav-dialog-group-item .count{font-size:12px;color:var(--text-sub);}
+.fav-dialog-new{
+    border-top:1px solid var(--border);padding-top:14px;
+    display:flex;gap:8px;align-items:center;
+}
+.fav-dialog-new input{
+    flex:1;height:36px;padding:0 12px;border:1px solid var(--border);
+    border-radius:var(--radius-sm);font-size:13px;outline:none;
+}
+.fav-dialog-new input:focus{border-color:var(--primary);}
+
+/* 收藏夹内文件卡片的取消收藏按钮 */
+.unfav-btn{
+    width:28px;height:28px;border:none;border-radius:50%;
+    background:transparent;color:var(--text-sub);cursor:pointer;
+    display:inline-flex;align-items:center;justify-content:center;
+    transition:var(--transition);
+}
+.unfav-btn:hover{background:#fee2e2;color:var(--danger);}
+.unfav-btn svg{width:14px;height:14px;}
+
+/* ===========================================================
+   搜索框
+   =========================================================== */
+.search-box{display:flex;align-items:center;gap:6px;margin-right:10px;position:relative;}
+.search-input{
+    width:220px;height:32px;padding:0 28px 0 30px;border:1px solid var(--border);border-radius:var(--radius-sm);
+    font-size:13px;outline:none;background:#fff;transition:var(--transition);color:var(--text);
+}
+.search-input:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(99,102,241,.1);}
+.search-input::placeholder{color:var(--text-sub);}
+.search-box .search-icon{
+    position:absolute;left:9px;top:50%;transform:translateY(-50%);
+    color:var(--text-sub);pointer-events:none;
+}
+.search-box .search-icon svg{width:14px;height:14px;}
+.search-clear{
+    position:absolute;right:6px;top:50%;transform:translateY(-50%);
+    width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;
+    background:transparent;border:none;cursor:pointer;color:var(--text-sub);font-size:12px;padding:0;
+}
+.search-clear:hover{background:var(--hover);color:var(--text);}
+
+/* ===========================================================
+   批量操作栏
+   =========================================================== */
+.batch-bar{
+    position:fixed;bottom:24px;left:50%;transform:translateX(-50%);z-index:100;
+    background:#fff;border:1px solid var(--border);border-radius:var(--radius-lg);
+    box-shadow:var(--shadow-lg);padding:10px 18px;display:flex;align-items:center;gap:12px;
+    animation:slideUp .25s ease;
+}
+@keyframes slideUp{from{transform:translateX(-50%) translateY(20px);opacity:0;}to{transform:translateX(-50%) translateY(0);opacity:1;}}
+.batch-bar-info{font-size:13px;color:var(--text);white-space:nowrap;}
+.batch-bar-info strong{color:var(--primary);font-weight:600;}
+.batch-bar .btn{height:34px;padding:0 14px;font-size:12.5px;font-weight:500;border-radius:var(--radius-sm);white-space:nowrap;min-width:56px;display:inline-flex;align-items:center;justify-content:center;gap:4px;}
+.batch-bar .btn-danger{background:var(--danger);color:#fff;border-color:var(--danger);}
+.batch-bar .btn-danger:hover{background:#dc2626;color:#fff;}
+.batch-bar .btn-primary{background:var(--primary);color:#fff;border-color:var(--primary);}
+.batch-bar .btn-primary:hover{background:var(--primary-hover);color:#fff;}
+.batch-bar .btn-warning{background:#f59e0b;color:#fff;border-color:#f59e0b;}
+.batch-bar .btn-warning:hover{background:#d97706;color:#fff;}
+.batch-bar .btn-secondary{background:#64748b;color:#fff;border-color:#64748b;}
+.batch-bar .btn-secondary:hover{background:#475569;color:#fff;}
+.batch-bar .btn svg{width:14px;height:14px;}
+
+/* ===========================================================
+   卡片 checkbox & 操作按钮
+   =========================================================== */
+.file-checkbox{
+    position:absolute;top:8px;left:8px;z-index:20;
+    width:22px;height:22px;border-radius:5px;
+    background:rgba(255,255,255,.95);border:2px solid var(--border);
+    display:flex;align-items:center;justify-content:center;cursor:pointer;
+    color:var(--primary);opacity:0;transition:var(--transition);
+    box-shadow:0 2px 6px rgba(0,0,0,.12);pointer-events:auto;
+}
+.file-checkbox svg{width:14px;height:14px;pointer-events:none;}
+.file-card:hover .file-checkbox,.file-checkbox.checked{opacity:1;}
+.file-checkbox.checked{background:var(--primary);border-color:var(--primary);color:#fff;}
+.file-checkbox:active{transform:scale(.92);}
+
+.file-card-actions{
+    position:absolute;top:8px;right:8px;z-index:15;
+    display:flex;gap:3px;opacity:0;transition:var(--transition);
+}
+.file-card:hover .file-card-actions{opacity:1;}
+.file-card-actions .icon-btn{
+    width:26px;height:26px;border-radius:5px;background:rgba(255,255,255,.95);
+    border:1px solid var(--border);color:var(--text-sub);cursor:pointer;
+    display:flex;align-items:center;justify-content:center;transition:var(--transition);
+    padding:0;box-shadow:0 1px 3px rgba(0,0,0,.08);
+}
+.file-card-actions .icon-btn:hover{background:#fff;color:var(--danger);border-color:var(--danger);}
+.file-card-actions .icon-btn.btn-remove:hover{color:var(--text);border-color:var(--border);}
+.file-card-actions .icon-btn.btn-loc:hover{color:var(--primary);border-color:var(--primary);}
+.file-card-actions .icon-btn.btn-perm-delete{color:var(--danger);}
+.file-card-actions .icon-btn.btn-perm-delete:hover{background:#fff;color:var(--danger);border-color:var(--danger);}
+.file-card-actions .icon-btn.fav-unfav-btn{color:#fbbf24;border-color:#fde68a;background:#fffbeb;}
+.file-card-actions .icon-btn.fav-unfav-btn:hover{color:#d97706;border-color:#fcd34d;background:#fef3c7;}
+
+.doc-card{position:relative;}
+.doc-card .file-checkbox{top:10px;left:10px;}
+.doc-card .file-card-actions{top:10px;right:10px;opacity:1;}
+
+/* 普通卡片已收藏星星高亮 */
+.file-card-actions .icon-btn.fav-star-active,.folder-card-actions .icon-btn.fav-star-active{color:#fbbf24;border-color:#fde68a;background:#fffbeb;}
+.file-card-actions .icon-btn.fav-star-active:hover,.folder-card-actions .icon-btn.fav-star-active:hover{color:#d97706;border-color:#fcd34d;background:#fef3c7;}
+.folder-card-actions .icon-btn.fav-unfav-btn{color:#fbbf24;border-color:#fde68a;background:#fffbeb;}
+.folder-card-actions .icon-btn.fav-unfav-btn:hover{color:#d97706;border-color:#fcd34d;background:#fef3c7;}
+
+/* ===========================================================
+   Toast 提示
+   =========================================================== */
+.toast{
+    position:fixed;top:20px;left:50%;transform:translateX(-50%);
+    background:rgba(15,23,42,.92);color:#fff;
+    padding:12px 20px;border-radius:8px;
+    box-shadow:var(--shadow-lg);z-index:2000;
+    font-size:13px;backdrop-filter:blur(8px);
+    animation:slideDown .25s ease;
+    display:flex;align-items:center;gap:10px;
+}
+.toast.success{background:rgba(16,185,129,.95);}
+.toast.error{background:rgba(239,68,68,.95);}
+.toast.confirm{background:rgba(15,23,42,.96);border-left:4px solid var(--primary);min-width:320px;max-width:520px;flex-direction:column;align-items:flex-start;gap:8px;padding:16px 20px;}
+.toast.confirm.danger{background:rgba(69,10,10,.96);border-left-color:var(--danger);}
+.toast.confirm .toast-title{font-size:14px;font-weight:600;margin-bottom:2px;}
+.toast.confirm.danger .toast-title{color:var(--danger);}
+.toast.confirm .toast-msg{font-size:13px;color:#e2e8f0;line-height:1.5;white-space:pre-wrap;}
+.toast.confirm.danger .toast-msg{color:#fecaca;}
+.toast-confirm-actions{display:flex;gap:10px;margin-top:6px;align-self:flex-end;}
+.toast-confirm-actions .btn{height:30px;padding:0 14px;font-size:12.5px;border-radius:var(--radius-sm);cursor:pointer;border:1px solid var(--border);background:#fff;color:var(--text);transition:var(--transition);}
+.toast-confirm-actions .btn:hover{background:#f1f5f9;}
+.toast-confirm-actions .btn-primary{background:var(--primary);color:#fff;border-color:var(--primary);}
+.toast-confirm-actions .btn-primary:hover{background:var(--primary-dark);}
+.toast-confirm-actions .btn-danger{background:var(--danger);color:#fff;border-color:var(--danger);}
+.toast-confirm-actions .btn-danger:hover{background:#dc2626;}
+.toast svg{width:18px;height:18px;}
+@keyframes slideDown{from{transform:translate(-50%,-20px);opacity:0;}to{transform:translate(-50%,0);opacity:1;}}
+
+/* 全局遮罩 - 拖拽时显示 */
+.global-drop-hint{
+    position:fixed;inset:0;
+    background:rgba(99,102,241,.1);
+    border:4px dashed var(--primary);
+    z-index:999;
+    display:flex;align-items:center;justify-content:center;
+    pointer-events:none;
+    animation:fadeIn .15s ease;
+}
+.global-drop-hint span{
+    background:var(--primary);color:#fff;
+    padding:14px 28px;border-radius:30px;font-size:16px;font-weight:600;
+    box-shadow:var(--shadow-lg);
+}
+
+/* ===========================================================
+   排序与分页工具栏
+   =========================================================== */
+.sort-bar{
+    display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+    margin-bottom:20px;padding:10px 14px;
+    background:#fff;border:1px solid var(--border);border-radius:var(--radius);
+    box-shadow:var(--shadow-sm);
+}
+.sort-bar .sort-label{font-size:12px;color:var(--text-sub);font-weight:500;}
+.sort-bar .sort-btn{
+    height:30px;padding:0 12px;border:1px solid var(--border);
+    border-radius:var(--radius-sm);background:#fff;font-size:12.5px;cursor:pointer;
+    color:var(--text);transition:var(--transition);display:inline-flex;align-items:center;gap:4px;
+}
+.sort-bar .sort-btn:hover{border-color:var(--primary);color:var(--primary);}
+.sort-bar .sort-btn.active{background:var(--primary);color:#fff;border-color:var(--primary);}
+.sort-bar .sort-btn-batch{border-color:var(--primary);color:var(--primary);font-weight:600;}
+.sort-bar .sort-btn-batch:hover{background:var(--primary-light);}
+.sort-bar .sort-btn .arrow{font-size:10px;opacity:.7;}
+.sort-bar select{
+    height:30px;padding:0 24px 0 10px;border:1px solid var(--border);
+    border-radius:var(--radius-sm);background:#fff;font-size:12.5px;cursor:pointer;
+    color:var(--text);outline:none;transition:var(--transition);
+    appearance:none;-webkit-appearance:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 8px center;
+}
+.sort-bar select:hover{border-color:var(--primary);}
+.sort-bar select:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(99,102,241,.1);}
+.pagination{display:flex;align-items:center;justify-content:center;gap:4px;margin-top:28px;padding-top:16px;border-top:1px solid var(--border);}
+.pagination .page-info{font-size:12px;color:var(--text-sub);margin-right:6px;}
+.pagination .page-size-select{
+    height:30px;padding:0 22px 0 8px;border:1px solid var(--border);
+    border-radius:var(--radius-sm);background:#fff;font-size:12.5px;cursor:pointer;
+    color:var(--text);outline:none;transition:var(--transition);
+    appearance:none;-webkit-appearance:none;
+    background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2364748b' stroke-width='2.5' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+    background-repeat:no-repeat;background-position:right 6px center;
+}
+.pagination .page-size-select:hover{border-color:var(--primary);}
+.pagination .page-size-select:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(99,102,241,.1);}
+.pagination button{
+    min-width:30px;height:30px;padding:0 6px;border:1px solid var(--border);
+    border-radius:var(--radius-sm);background:#fff;font-size:12.5px;cursor:pointer;
+    color:var(--text);transition:var(--transition);display:inline-flex;align-items:center;justify-content:center;
+}
+.pagination button:hover{border-color:var(--primary);color:var(--primary);}
+.pagination button:disabled{opacity:.4;cursor:not-allowed;}
+.pagination button.page-num.active{background:var(--primary);color:#fff;border-color:var(--primary);}
+.pagination button.page-num.ellipsis{cursor:default;border:none;background:transparent;}
+.pagination button.page-num.ellipsis:hover{color:var(--text);}
+</style>
+</head>
+<body>
+<div id="app">
+    <!-- 侧边栏 -->
+    <aside class="sidebar">
+        <div class="sidebar-header">
+            <div class="brand">
+                <div class="brand-logo">⌘</div>
+                <div>
+                    <div class="brand-name">文件收纳箱</div>
+                    <div class="brand-tag">作者：0216</div>
+                </div>
+            </div>
+        </div>
+        <nav class="nav" id="navMenu"></nav>
+        <div class="sidebar-footer">
+            ✓ 纯本地离线运行<br>
+            ✓ 仅做路径映射 不动原文件
+        </div>
+    </aside>
+
+    <!-- 主区 -->
+    <main class="main">
+        <header class="topbar">
+            <div>
+                <div class="topbar-title" id="topbarTitle">我的目录</div>
+                <div class="topbar-sub" id="topbarSub"></div>
+            </div>
+            <div class="topbar-actions">
+                <button class="btn" onclick="App.pickFolder()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
+                    选择目录
+                </button>
+                <button class="btn btn-primary" onclick="App.refreshAll()">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                    全部刷新
+                </button>
+                                <span class="version-badge" id="versionBadge">v6.4.2</span>
+            </div>
+        </header>
+        <section class="content" id="content"></section>
+    </main>
+</div>
+
+<!-- 模态框容器 -->
+<div id="modalContainer"></div>
+<!-- Toast 容器 -->
+<div id="toastContainer"></div>
+<!-- 批量操作浮动栏 -->
+<div id="batchBar" style="display:none;"></div>
+<!-- 全局拖拽提示 -->
+<div id="globalDrop"></div>
+
+<script>
+/* ===========================================================
+   迷你 Vue-Style 响应式框架  (~70 行)
+   - reactive(obj)  把对象变成响应式; 任意属性改动自动调度渲染
+   - watchEffect(fn) 自动追踪依赖, 数据变了就重跑
+   - render(...)    用模板字面量生成 HTML, 集中刷新 DOM
+   =========================================================== */
+let _activeEffect = null;
+const _depMap = new WeakMap();
+
+function track(target, key){
+    if(!_activeEffect) return;
+    let deps = _depMap.get(target);
+    if(!deps){ deps = new Map(); _depMap.set(target, deps); }
+    let set = deps.get(key);
+    if(!set){ set = new Set(); deps.set(key, set); }
+    set.add(_activeEffect);
+}
+function trigger(target, key){
+    const deps = _depMap.get(target);
+    if(!deps) return;
+    const set = deps.get(key);
+    if(!set) return;
+    // 复制一份避免遍历过程中变化
+    [...set].forEach(eff => eff());
+}
+function reactive(target){
+    return new Proxy(target, {
+        get(t, k, r){
+            const v = Reflect.get(t, k, r);
+            track(t, k);
+            // 嵌套对象/数组自动转响应式
+            return (v && typeof v === 'object') ? reactive(v) : v;
+        },
+        set(t, k, v, r){
+            const ok = Reflect.set(t, k, v, r);
+            trigger(t, k);
+            return ok;
+        }
+    });
+}
+let _scheduled = false;
+function watchEffect(fn){
+    const eff = () => {
+        if(_scheduled) return;
+        _scheduled = true;
+        requestAnimationFrame(() => {
+            _scheduled = false;
+            _activeEffect = eff;
+            try { fn(); } finally { _activeEffect = null; }
+        });
+    };
+    _activeEffect = eff;
+    try { fn(); } finally { _activeEffect = null; }
+}
+
+/* ===========================================================
+   SVG 图标库 (字符串形式, 嵌入 HTML 模板使用)
+   =========================================================== */
+const ICONS = {
+    folder:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>',
+    video:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="23 7 16 12 23 17 23 7"/><rect x="1" y="5" width="15" height="14" rx="2" ry="2"/></svg>',
+    image:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>',
+    doc:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>',
+    upload:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>',
+    refresh:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>',
+    trash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
+    location:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>',
+    external:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>',
+    play:'<svg viewBox="0 0 24 24" fill="currentColor"><polygon points="6 3 20 12 6 21 6 3"/></svg>',
+    inbox:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>',
+    check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>',
+    alert:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>',
+    close:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+    star:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
+    starFilled:'<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>',
+    heart:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>',
+    plus:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>',
+    edit:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>',
+    back:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></svg>',
+    move:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="5 9 2 12 5 15"/><polyline points="9 5 12 2 15 5"/><polyline points="19 9 22 12 19 15"/><polyline points="15 19 12 22 9 19"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="12" y1="2" x2="12" y2="22"/></svg>',
+    search:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>',
+    checkbox:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/></svg>',
+    checkboxChecked:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"/><polyline points="9 12 12 15 17 9"/></svg>',
+    unmap:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"/><line x1="12" y1="2" x2="12" y2="12"/></svg>',
+};
+
+/* ===========================================================
+   工具函数
+   =========================================================== */
+function escapeHtml(s){
+    if(s==null) return '';
+    return String(s).replace(/[&<>"']/g, c => ({
+        '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    }[c]));
+}
+function formatSize(bytes){
+    if(!bytes) return '0 B';
+    const units = ['B','KB','MB','GB','TB'];
+    let i = 0; let n = bytes;
+    while(n >= 1024 && i < units.length-1){ n /= 1024; i++; }
+    return n.toFixed(n>=10||i===0?0:1) + ' ' + units[i];
+}
+function formatTime(ts){
+    if(!ts) return '';
+    const d = new Date(ts*1000);
+    const y = d.getFullYear();
+    const m = String(d.getMonth()+1).padStart(2,'0');
+    const day = String(d.getDate()).padStart(2,'0');
+    return `${y}-${m}-${day}`;
+}
+function getFolderName(p){
+    if(!p) return '';
+    const norm = p.replace(/\\/g,'/').replace(/\/$/,'');
+    const parts = norm.split('/');
+    return parts[parts.length-1] || p;
+}
+function docColor(ext){
+    if(['.pdf'].includes(ext)) return {cls:'pdf', label:'PDF'};
+    if(['.doc','.docx','.rtf','.odt','.wps'].includes(ext)) return {cls:'doc', label:'DOC'};
+    if(['.xls','.xlsx','.csv','.ods','.et'].includes(ext)) return {cls:'xls', label:'XLS'};
+    if(['.ppt','.pptx','.odp','.dps'].includes(ext)) return {cls:'ppt', label:'PPT'};
+    return {cls:'txt', label:ext.replace('.','').toUpperCase().slice(0,3) || 'TXT'};
+}
+
+/* ===========================================================
+   排序与分页辅助函数
+   =========================================================== */
+function sortList(list){
+    if(!list || !list.length) return [];
+    const sorted = [...list];
+    const dir = state.sortOrder === 'asc' ? 1 : -1;
+    sorted.sort((a, b) => {
+        if(state.sortBy === 'name'){
+            return dir * String(a.name || '').localeCompare(String(b.name || ''), undefined, {numeric:true, sensitivity:'base'});
+        }
+        if(state.sortBy === 'modified') return dir * ((a.modified || 0) - (b.modified || 0));
+        if(state.sortBy === 'created') return dir * ((a.created || 0) - (b.created || 0));
+        return 0;
+    });
+    return sorted;
+}
+function paginate(list){
+    const total = list.length;
+    // 防御性检查: 确保 pageSize 是正整数, 防止异常值导致分页错乱
+    let ps = parseInt(state.pageSize, 10);
+    if(!ps || ps < 1) ps = 20;
+    const totalPages = total > 0 ? Math.max(1, Math.ceil(total / ps)) : 1;
+    let cp = parseInt(state.currentPage, 10);
+    if(!cp || cp < 1) cp = 1;
+    const page = Math.min(cp, totalPages);
+    const start = (page - 1) * ps;
+    const end = start + ps;
+    return { items: list.slice(start, end), totalPages, page, total, start, end };
+}
+function buildPaginationHtml(page, totalPages, total, onClickFn){
+    if(totalPages <= 1) return '';
+    let html = `<div class="pagination">
+        <span class="page-info">${page} / ${totalPages} 页 (共 ${total} 条)</span>
+        <button ${page <= 1 ? 'disabled' : ''} onclick="${onClickFn}(${page - 1})">‹</button>`;
+    const show = [];
+    const add = (p) => { if(p >= 1 && p <= totalPages && !show.includes(p)) show.push(p); };
+    add(1); add(totalPages); add(page); add(page-1); add(page+1); add(page-2); add(page+2);
+    show.sort((a,b)=>a-b);
+    let last = 0;
+    for(const p of show){
+        if(last && p > last + 1) html += `<button class="page-num ellipsis" disabled>...</button>`;
+        const cls = p === page ? 'page-num active' : 'page-num';
+        html += `<button class="${cls}" onclick="${onClickFn}(${p})">${p}</button>`;
+        last = p;
+    }
+    html += `<button ${page >= totalPages ? 'disabled' : ''} onclick="${onClickFn}(${page + 1})">›</button>`;
+    html += `<span class="sort-label" style="margin-left:12px;">每页:</span>`;
+    html += `<select class="page-size-select" onchange="App.setPageSize(parseInt(this.value))">`;
+    html += `<option value="10" ${state.pageSize===10?'selected':''}>10条</option>`;
+    html += `<option value="20" ${state.pageSize===20?'selected':''}>20条</option>`;
+    html += `<option value="50" ${state.pageSize===50?'selected':''}>50条</option>`;
+    html += `<option value="100" ${state.pageSize===100?'selected':''}>100条</option>`;
+    html += `</select></div>`;
+    return html;
+}
+function buildSortBarHtml(total){
+    const sortLabel = {name:'名称', modified:'修改时间', created:'创建时间'};
+    const mkBtn = (key) => {
+        const active = state.sortBy === key ? 'active' : '';
+        const arrow = state.sortBy === key ? (state.sortOrder === 'asc' ? '↑' : '↓') : '';
+        return `<button class="sort-btn ${active}" onclick="App.setSort('${key}')">${sortLabel[key]}<span class="arrow">${arrow}</span></button>`;
+    };
+    const batchBtnClass = state.batchMode ? 'sort-btn active' : 'sort-btn sort-btn-batch';
+    const batchBtnText = state.batchMode ? '退出批量' : '批量操作';
+    const searchHtml = `<div class="search-box" id="searchBox" style="display:flex;">
+        <span class="search-icon">${ICONS.search}</span>
+        <input type="text" class="search-input" id="searchInput" placeholder="输入后回车搜索内容" oninput="App.onSearchInput(this.value)" onkeydown="if(event.key==='Enter'){ event.preventDefault(); const v=this.value.trim(); if(!v) App.clearSearch(); else App.doSearch(); }"/>
+        <button class="search-clear" onclick="App.clearSearch()" title="清除" style="display:none;">×</button>
+    </div>`;
+    return `<div class="sort-bar">
+        ${searchHtml}
+        <span class="sort-label">排序:</span>
+        ${mkBtn('name')}${mkBtn('modified')}${mkBtn('created')}
+        <button class="${batchBtnClass}" id="batchToggleBtn" onclick="App.toggleBatchMode()" style="margin-left:auto;font-weight:600;">${batchBtnText}</button>
+        <span class="sort-label">共 ${total} 个</span>
+    </div>`;
+}
+
+/* ===========================================================
+   PyWebView API 适配层
+   pywebview 加载完成前 window.pywebview 可能未就绪, 这里做一层等待
+   =========================================================== */
+function waitPyWebview(){
+    // 检测 pywebview 是否真的"可用" (api 对象有期望的方法, 不只是有壳)
+    function ready(){
+        const api = window.pywebview && window.pywebview.api;
+        if(!api) return false;
+        return typeof api.get_folders === 'function'
+            || typeof api.getFolders   === 'function';
+    }
+    return new Promise(resolve => {
+        if(ready()){ resolve(); return; }
+        const start = Date.now();
+        const timer = setInterval(() => {
+            if(ready()){ clearInterval(timer); resolve(); }
+            else if(Date.now() - start > 15000){
+                // 15 秒兜底; 超时也 resolve, 让具体错误显出来
+                clearInterval(timer); resolve();
+            }
+        }, 50);
+        // pywebview 4+ 注入完成会派发这个事件
+        window.addEventListener('pywebviewready', () => {
+            // 注入完成后再等 200ms, 防止方法 lazy 绑定
+            setTimeout(() => {
+                if(ready()){ clearInterval(timer); resolve(); }
+            }, 200);
+        }, { once:true });
+    });
+}
+/* ---------- 媒体资源缓存 (LRU, 上限 30) ---------- */
+const MAX_MEDIA_CACHE = 30;
+const mediaCache = new Map();
+function getCachedMedia(key){
+    if(!mediaCache.has(key)) return undefined;
+    const val = mediaCache.get(key);
+    mediaCache.delete(key);
+    mediaCache.set(key, val);
+    return val;
+}
+function setCachedMedia(key, value){
+    if(!value) return;
+    if(mediaCache.has(key)) mediaCache.delete(key);
+    else if(mediaCache.size >= MAX_MEDIA_CACHE){
+        const firstKey = mediaCache.keys().next().value;
+        mediaCache.delete(firstKey);
+    }
+    mediaCache.set(key, value);
+}
+
+const Api = (() => {
+    // pywebview 4.0+ 会把 Python 的 snake_case 自动转成 camelCase 暴露,
+    // 旧版本仍是 snake_case. 这里做双命名兼容查找.
+    function pick(snake){
+        const api = window.pywebview && window.pywebview.api;
+        if(!api){
+            throw new Error('pywebview.api 对象未注入, 请重启程序');
+        }
+        const camel = snake.replace(/_([a-z])/g, (_, c) => c.toUpperCase());
+        const fn = api[snake] || api[camel];
+        if(typeof fn !== 'function'){
+            const keys = Object.keys(api);
+            throw new Error(
+                `API 未找到: ${snake} / ${camel}\n` +
+                `当前可用方法: [${keys.join(', ') || '空'}]`
+            );
+        }
+        return fn;
+    }
+    return {
+        getFolders:   ()  => pick('get_folders')(),
+        addFolder:    (p) => pick('add_folder')(p),
+        removeFolder: (p) => pick('remove_folder')(p),
+        scanAll:      ()  => pick('scan_all')(),
+        scanOne:      (p) => pick('scan_one')(p),
+        openFile:     (p) => pick('open_file')(p),
+        showInFolder: (p) => pick('show_in_folder')(p),
+        openFolder:   (p) => pick('open_folder')(p),
+        getVersion:   ()  => pick('get_version')(),
+        getCachedFiles: () => pick('get_cached_files')(),
+        readImage:    (p) => {
+            const cached = getCachedMedia('img:'+p);
+            if(cached) return Promise.resolve(cached);
+            return pick('read_image_base64')(p).then(data => { setCachedMedia('img:'+p, data); return data; });
+        },
+        getImageThumb:(p) => pick('get_image_thumb')(p),
+        readVideo:    (p) => {
+            const cached = getCachedMedia('vid:'+p);
+            if(cached) return Promise.resolve(cached);
+            return pick('read_video_base64')(p).then(data => { setCachedMedia('vid:'+p, data); return data; });
+        },
+        getVideoCover:(p) => pick('get_video_cover')(p),
+        getVideoPreview:(p) => pick('get_video_preview_frames')(p),
+        deleteFolderPermanently: (p) => pick('delete_folder_permanently')(p),
+        pickFolder:   ()  => pick('pick_folder')(),
+        pickTargetFolder: () => pick('pick_target_folder')(),
+        moveFavGroup: (cat, gid, path) => pick('move_fav_group')(cat, gid, path),
+        // --- 收藏功能 API ---
+        getFavGroups: (cat) => pick('get_favorite_groups')(cat),
+        createFavGroup: (cat, name) => pick('create_favorite_group')(cat, name),
+        renameFavGroup: (cat, gid, name) => pick('rename_favorite_group')(cat, gid, name),
+        deleteFavGroup: (cat, gid) => pick('delete_favorite_group')(cat, gid),
+        addToFavorites: (cat, gid, path) => pick('add_to_favorites')(cat, gid, path),
+        removeFromFavorites: (cat, gid, path) => pick('remove_from_favorites')(cat, gid, path),
+        getFavItems: (cat, gid) => pick('get_favorite_items')(cat, gid),
+        isFavorited: (cat, path) => pick('is_favorited')(cat, path),
+        getSettings: () => pick('get_settings')(),
+        saveSettings: (s) => pick('save_settings')(s),
+        // --- 项目文件夹 API ---
+        getProjectFolders: () => pick('get_project_folders')(),
+        addProjectFolder: (p) => pick('add_project_folder')(p),
+        removeProjectFolder: (p) => pick('remove_project_folder')(p),
+        deleteProjectFolderReal: (p) => pick('delete_project_folder_real')(p),
+        batchRemoveProjectFolders: (paths) => pick('batch_remove_project_folders')(paths),
+        batchDeleteProjectReal: (paths) => pick('batch_delete_project_real')(paths),
+        getProjectItems: () => pick('get_project_items')(),
+        // --- 文件删除 / 搜索 / 批量操作 ---
+        deleteFileMap: (cat, path) => pick('delete_file_map')(path, cat),
+        deleteFileReal: (cat, path) => pick('delete_file_real')(path, cat),
+        batchDeleteMap: (cat, paths) => pick('batch_delete_map')(paths, cat),
+        batchDeleteReal: (cat, paths) => pick('batch_delete_real')(paths, cat),
+        batchAddFavorites: (cat, gid, paths) => pick('batch_add_favorites')(cat, gid, paths),
+        batchRemoveFavorites: (cat, paths) => pick('batch_remove_favorites')(cat, paths),
+        searchFiles: (kw) => pick('search_files')(kw),
+    };
+})();
+
+/* ===========================================================
+   响应式全局状态
+   =========================================================== */
+let currentSearchKeyword = '';  // 当前搜索关键词（非响应式，避免输入时触发重渲染）
+const state = reactive({
+    view: 'folders',            // 当前视图: folders/video/image/document/fav_groups/fav_items
+    folders: [],                // 已收录的文件夹绝对路径列表
+    files: { video:[], image:[], document:[] }, // 扫描后的文件
+    loading: false,             // 是否处于扫描中
+    dragOver: false,            // 拖拽悬停状态
+    modal: null,                // 当前打开的模态框 {type, ...payload}
+    // --- 收藏功能状态 ---
+    favCategory: '',            // 当前收藏分类: video/image/document
+    favGroupId: '',             // 当前选中的收藏夹 ID
+    favorites: { video:[], image:[], document:[], project:[] }, // 收藏夹列表
+    projectFolders: [],         // 已收录的项目文件夹绝对路径列表
+    projects: [],               // 项目文件夹元数据列表
+    favItems: [],               // 当前收藏夹内的文件列表
+    favLoading: false,          // 收藏夹加载状态
+    // --- 排序与分页状态 ---
+    sortBy: 'name',             // name / modified / created
+    sortOrder: 'asc',           // asc / desc
+    pageSize: 20,               // 每页条数
+    currentPage: 1,             // 当前页码
+    // --- 搜索状态 ---
+    searchResults: { video:[], image:[], document:[] }, // 搜索结果
+    isSearching: false,         // 是否处于搜索模式
+    // --- 批量操作状态 ---
+    batchMode: false,           // 是否处于批量选择模式
+    batchSelected: {},          // { 'path1': true, 'path2': true }
+});
+
+/* ===========================================================
+   主控对象 App  (供 onclick 等内联事件调用)
+   =========================================================== */
+const App = {
+    /* -------- 视图切换 -------- */
+    setView(v){
+        state.view = v;
+        state.currentPage = 1;
+        // 重置批量和搜索状态
+        state.batchMode = false;
+        state.batchSelected = {};
+        state.isSearching = false;
+        currentSearchKeyword = '';
+        const input = document.getElementById('searchInput');
+        if(input) input.value = '';
+        // 控制搜索框显示/隐藏
+        const searchBox = document.getElementById('searchBox');
+        const batchBtn = document.getElementById('batchToggleBtn');
+        const showTools = ['video','image','document','project','fav_items'].includes(v);
+        if(searchBox) searchBox.style.display = showTools ? 'flex' : 'none';
+        if(batchBtn) batchBtn.style.display = showTools ? 'inline-flex' : 'none';
+        if(batchBtn) batchBtn.textContent = '批量操作';
+        if(v === 'project') this.loadProjects();
+    },
+
+    /* -------- 文件: 点击行为 / 系统打开 / 打开位置 -------- */
+    _getFileByIdx(cat, idx){
+        // 搜索模式下使用 searchResults，否则使用 files
+        const list = state.isSearching ? state.searchResults[cat] : state.files[cat];
+        return list && list[idx];
+    },
+    // 通过 (类别, 索引) 取得文件并打开 (用索引避免把整个对象塞进 onclick 属性)
+    clickFileByIdx(cat, idx){
+        const file = this._getFileByIdx(cat, idx);
+        if(!file) return;
+        if(state.batchMode){
+            this.toggleSelect(file.path);
+            return;
+        }
+        return this.clickFile(file);
+    },
+    // 通过 (类别, 索引) 获取路径并定位
+    showLocByIdx(cat, idx){
+        const file = this._getFileByIdx(cat, idx);
+        if(!file) return;
+        return this.showInFolder(file.path);
+    },
+    // 通过文件夹列表索引获取路径
+    folderAction(action, idx){
+        const path = state.folders[idx];
+        if(!path) return;
+        if(action === 'refresh') return this.refreshOne(path);
+        if(action === 'open')    return this.openFolder(path);
+        if(action === 'remove')  return this.removeFolder(path);
+        if(action === 'deletePermanently') return this.deleteFolderPermanently(path);
+    },
+    // 项目文件夹列表操作（用于我的目录页面）
+    projectFolderAction(action, idx){
+        const path = state.projectFolders[idx];
+        if(!path) return;
+        if(action === 'open')    return this.openFolder(path);
+        if(action === 'remove')  return this.removeProjectFolderByPath(path);
+        if(action === 'deletePermanently') return this.deleteProjectFolderPermanently(path);
+    },
+    async removeProjectFolderByPath(path){
+        const r = await Api.removeProjectFolder(path);
+        toast(r.msg, r.ok ? 'success' : 'error');
+        if(r.ok){
+            state.projectFolders = state.projectFolders.filter(p => p !== path);
+            this.refreshCurrentView();
+        }
+    },
+    async deleteProjectFolderPermanently(path){
+        const name = getFolderName(path);
+        const ok = await confirmDialog(
+            '【高危】永久删除确认',
+            `你即将永久删除本地真实文件夹:\n\n${path}\n\n⚠ 该操作会直接删除电脑本地真实原文件，删除后不可恢复！`,
+            '确认永久删除',
+            true
+        );
+        if(!ok) return;
+        const r = await Api.deleteProjectFolderReal(path);
+        toast(r.msg, r.ok ? 'success' : 'error');
+        if(r.ok){
+            state.projectFolders = state.projectFolders.filter(p => p !== path);
+            this.refreshCurrentView();
+        }
+    },
+    // 项目专区操作
+    clickProjectByIdx(idx){
+        const item = state.projects[idx];
+        if(!item) return;
+        if(state.batchMode){
+            this.toggleSelect(item.path);
+            return;
+        }
+        return this.showInFolder(item.path);
+    },
+    showProjectLocByIdx(idx){
+        const item = state.projects[idx];
+        if(!item) return;
+        return this.showInFolder(item.path);
+    },
+    async deleteProjectMap(idx){
+        const item = state.projects[idx];
+        if(!item) return;
+        const r = await Api.removeProjectFolder(item.path);
+        toast(r.msg, r.ok ? 'success' : 'error');
+        if(r.ok){
+            state.projects = state.projects.filter(p => p.path !== item.path);
+            await this.loadFavGroups('project');
+            this.refreshCurrentView();
+        }
+    },
+    async deleteProjectReal(idx){
+        const item = state.projects[idx];
+        if(!item) return;
+        const ok = await confirmDialog(
+            '【高危】永久删除确认',
+            `你即将永久删除本地真实文件夹:\n\n${item.path}\n\n⚠ 该操作会直接删除电脑本地真实原文件，删除后不可恢复！`,
+            '确认永久删除',
+            true
+        );
+        if(!ok) return;
+        const r = await Api.deleteProjectFolderReal(item.path);
+        toast(r.msg, r.ok ? 'success' : 'error');
+        if(r.ok){
+            state.projects = state.projects.filter(p => p.path !== item.path);
+            await this.loadFavGroups('project');
+            this.refreshCurrentView();
+        }
+    },
+    async showProjectFavDialogByIdx(idx){
+        const item = state.projects[idx];
+        if(!item) return;
+        await this.showFavDialog('project', item.path);
+    },
+
+    /* -------- 排序与分页 -------- */
+    applySortToAll(){
+        for(const cat of ['video','image','document']){
+            state.files[cat] = sortList(state.files[cat]);
+        }
+        if(state.favItems.length) state.favItems = sortList(state.favItems);
+    },
+    async loadSettings(){
+        try{
+            const s = await Api.getSettings();
+            if(s){
+                state.sortBy = s.sort_by || 'name';
+                state.sortOrder = s.sort_order || 'asc';
+                state.pageSize = s.page_size || 20;
+            }
+        }catch(e){ /* 使用默认值 */ }
+    },
+    async saveSettings(){
+        try{
+            await Api.saveSettings({
+                sort_by: state.sortBy,
+                sort_order: state.sortOrder,
+                page_size: state.pageSize
+            });
+        }catch(e){ /* 忽略 */ }
+    },
+    setSort(by){
+        if(state.sortBy === by){
+            state.sortOrder = state.sortOrder === 'asc' ? 'desc' : 'asc';
+        }else{
+            state.sortBy = by;
+            state.sortOrder = 'asc';
+        }
+        state.currentPage = 1;
+        this.applySortToAll();
+        this.saveSettings();
+    },
+    setPageSize(size){
+        state.pageSize = size;
+        state.currentPage = 1;
+        this.saveSettings();
+    },
+    setPage(p){
+        state.currentPage = p;
+    },
+
+    /* -------- 文件夹: 选择 / 添加 / 移除 / 刷新 -------- */
+    async pickFolder(){
+        const r = await Api.pickFolder();
+        if(r && r.ok){
+            const addR = await Api.addFolder(r.path);
+            toast(addR.msg, addR.ok ? 'success' : 'error');
+            if(addR.ok){
+                state.folders = await Api.getFolders();
+                await this.refreshOne(r.path);
+                this.refreshCurrentView();
+            }
+        } else if(r && r.msg && r.msg !== '已取消选择'){
+            toast(r.msg, 'error');
+        }
+    },
+    async pickProjectFolder(){
+        const r = await Api.pickFolder();
+        if(r && r.ok){
+            const addR = await Api.addProjectFolder(r.path);
+            toast(addR.msg, addR.ok ? 'success' : 'error');
+            if(addR.ok){
+                state.projectFolders = await Api.getProjectFolders();
+                await this.loadProjects();
+                this.refreshCurrentView();
+            }
+        } else if(r && r.msg && r.msg !== '已取消选择'){
+            toast(r.msg, 'error');
+        }
+    },
+    async addFolderByPath(path){
+        const r = await Api.addFolder(path);
+        toast(r.msg, r.ok ? 'success' : 'error');
+        if(r.ok){
+            state.folders = await Api.getFolders();
+            await this.refreshOne(path);
+            this.refreshCurrentView();
+        }
+    },
+    async addProjectFolderByPath(path){
+        const r = await Api.addProjectFolder(path);
+        toast(r.msg, r.ok ? 'success' : 'error');
+        if(r.ok){
+            state.projectFolders = await Api.getProjectFolders();
+            await this.loadProjects();
+            this.refreshCurrentView();
+        }
+    },
+    async removeFolder(path){
+        // 【普通移除】直接从软件记录中删除路径, 不弹二次确认, 不动原文件
+        const r = await Api.removeFolder(path);
+        toast(r.msg, r.ok ? 'success' : 'error');
+        if(r.ok){
+            state.folders = await Api.getFolders();
+            for(const cat of ['video','image','document']){
+                state.files[cat] = state.files[cat].filter(f => f.folder !== path);
+            }
+            this.refreshCurrentView();
+        }
+    },
+    async refreshAll(){
+        state.loading = true;
+        try {
+            state.folders = await Api.getFolders();
+            state.projectFolders = await Api.getProjectFolders();
+            state.files = await Api.scanAll();
+            this.applySortToAll();
+        } catch(e){
+            toast('扫描出错: ' + e, 'error');
+        } finally {
+            state.loading = false;
+        }
+    },
+    async refreshOne(path){
+        toast('正在刷新该目录...', 'info');
+        const single = await Api.scanOne(path);
+        // 合并: 先删掉旧的, 再加入新的
+        for(const cat of ['video','image','document']){
+            state.files[cat] = state.files[cat].filter(f => f.folder !== path)
+                                                .concat(single[cat]);
+        }
+        this.applySortToAll();
+        toast('刷新完成', 'success');
+    },
+
+    /* -------- 文件: 点击行为 / 系统打开 / 打开位置 -------- */
+    // 通过文件夹列表索引获取路径
+    folderAction(action, idx){
+        const path = state.folders[idx];
+        if(!path) return;
+        if(action === 'refresh') return this.refreshOne(path);
+        if(action === 'open')    return this.openFolder(path);
+        if(action === 'remove')  return this.removeFolder(path);
+        if(action === 'deletePermanently') return this.deleteFolderPermanently(path);
+    },
+    async deleteFolderPermanently(path){
+        // 【高危操作】永久删除本地真实文件夹
+        const ok = await confirmDialog(
+            '【高危操作】永久删除确认',
+            `你即将永久删除电脑本地的真实文件夹:\n\n${path}\n\n⚠ 该操作会直接删除电脑本地真实原文件，删除后不可恢复！\n⚠ 这不是仅移除软件记录，而是真正的文件删除！`,
+            '确认永久删除',
+            true  // danger 模式：红字警告 + 红色确认按钮
+        );
+        if(!ok) return;
+        const r = await Api.deleteFolderPermanently(path);
+        toast(r.msg, r.ok ? 'success' : 'error');
+        if(r.ok){
+            // 从状态中移除该目录及其下所有文件
+            state.folders = state.folders.filter(f => f !== path);
+            for(const cat of ['video','image','document']){
+                state.files[cat] = state.files[cat].filter(f => f.folder !== path);
+            }
+            this.refreshCurrentView();
+        }
+    },
+    async clickFile(file){
+        const cat = state.view;
+        if(cat === 'image'){
+            // 内置大图预览
+            state.modal = { type:'loading', text:'加载图片中...' };
+            const data = await Api.readImage(file.path);
+            if(data){
+                state.modal = { type:'image', src:data, file };
+            } else {
+                state.modal = null;
+                toast('图片过大或读取失败, 改用系统程序打开', 'error');
+                await Api.openFile(file.path);
+            }
+        } else if(cat === 'video'){
+            // 视频统一调用系统播放器打开, 避免内置播放内存占用和卡顿问题
+            await Api.openFile(file.path);
+        } else {
+            // 文档: 直接调用系统默认软件
+            const r = await Api.openFile(file.path);
+            if(!r.ok) toast(r.msg, 'error');
+        }
+    },
+    async showInFolder(path){
+        const r = await Api.showInFolder(path);
+        if(!r.ok) toast(r.msg, 'error');
+    },
+    async openFolder(path){
+        const r = await Api.openFolder(path);
+        if(!r.ok) toast(r.msg, 'error');
+    },
+    closeModal(){ state.modal = null; },
+
+    /* ==========================================================
+       收藏功能: 视图导航 / 收藏夹管理 / 收藏操作
+       ========================================================== */
+
+    /* -------- 视图导航 -------- */
+    async setFavView(category){
+        // 进入某分类的收藏夹列表视图
+        state.favCategory = category;
+        state.favGroupId = '';
+        state.view = 'fav_groups';
+        state.currentPage = 1;
+        state.batchMode = false;
+        state.batchSelected = {};
+        state.isSearching = false;
+        currentSearchKeyword = '';
+        const input = document.getElementById('searchInput');
+        if(input) input.value = '';
+        const searchBox = document.getElementById('searchBox');
+        const batchBtn = document.getElementById('batchToggleBtn');
+        if(searchBox) searchBox.style.display = 'none';
+        if(batchBtn) batchBtn.style.display = 'none';
+        await this.loadFavGroups(category);
+    },
+    async enterFavGroup(groupId){
+        // 进入某个收藏夹，展示其中文件
+        state.favGroupId = groupId;
+        state.view = 'fav_items';
+        state.currentPage = 1;
+        state.batchMode = false;
+        state.batchSelected = {};
+        state.isSearching = false;
+        currentSearchKeyword = '';
+        const input = document.getElementById('searchInput');
+        if(input) input.value = '';
+        const searchBox = document.getElementById('searchBox');
+        const batchBtn = document.getElementById('batchToggleBtn');
+        if(searchBox) searchBox.style.display = 'flex';
+        if(batchBtn) { batchBtn.style.display = 'inline-flex'; batchBtn.textContent = '批量操作'; }
+        await this.loadFavItems(state.favCategory, groupId);
+    },
+    backToFavGroups(){
+        // 从收藏夹文件列表返回收藏夹列表
+        state.favGroupId = '';
+        state.favItems = [];
+        state.view = 'fav_groups';
+        state.currentPage = 1;
+        state.batchMode = false;
+        state.batchSelected = {};
+        state.isSearching = false;
+        currentSearchKeyword = '';
+        const input = document.getElementById('searchInput');
+        if(input) input.value = '';
+        const searchBox = document.getElementById('searchBox');
+        const batchBtn = document.getElementById('batchToggleBtn');
+        if(searchBox) searchBox.style.display = 'none';
+        if(batchBtn) batchBtn.style.display = 'none';
+    },
+
+    /* -------- 收藏夹数据加载 -------- */
+    async loadFavGroups(category){
+        state.favorites[category] = await Api.getFavGroups(category);
+    },
+    async loadProjects(){
+        try {
+            state.projects = sortList(await Api.getProjectItems());
+        } catch(e) {
+            toast('加载项目文件夹失败: ' + e, 'error');
+            state.projects = [];
+        }
+    },
+    async loadFavItems(category, groupId){
+        state.favLoading = true;
+        try {
+            state.favItems = sortList(await Api.getFavItems(category, groupId));
+        } catch(e) {
+            toast('加载收藏夹内容失败: ' + e, 'error');
+            state.favItems = [];
+        } finally {
+            state.favLoading = false;
+        }
+    },
+
+    /* -------- 收藏夹管理 -------- */
+    async createFavGroup(name){
+        const cat = state.favCategory;
+        if(!cat) return;
+        const r = await Api.createFavGroup(cat, name);
+        toast(r.msg, r.ok ? 'success' : 'error');
+        if(r.ok) await this.loadFavGroups(cat);
+        return r;
+    },
+    async renameFavGroup(groupId, newName){
+        const cat = state.favCategory;
+        if(!cat) return;
+        const r = await Api.renameFavGroup(cat, groupId, newName);
+        toast(r.msg, r.ok ? 'success' : 'error');
+        if(r.ok) await this.loadFavGroups(cat);
+    },
+    async showCreateFavGroupDialog(){
+        const name = await promptDialog('新建收藏夹', '请输入收藏夹名称：');
+        if(!name) return;
+        await this.createFavGroup(name);
+    },
+    async showRenameFavGroupDialog(groupId, oldName){
+        const name = await promptDialog('重命名收藏夹', '请输入新名称：', oldName);
+        if(!name || name === oldName) return;
+        await this.renameFavGroup(groupId, name);
+    },
+    async deleteFavGroup(groupId){
+        const cat = state.favCategory;
+        if(!cat) return;
+        const ok = await confirmDialog('删除收藏夹', '确定删除该收藏夹吗？其中的收藏记录也将被清除。', '删除');
+        if(!ok) return;
+        const r = await Api.deleteFavGroup(cat, groupId);
+        toast(r.msg, r.ok ? 'success' : 'error');
+        if(r.ok) await this.loadFavGroups(cat);
+    },
+    async moveFavGroup(groupId){
+        // 【一键搬迁 · 高危操作】将收藏夹内所有文件物理搬迁到指定目录
+        const cat = state.favCategory;
+        if(!cat) return;
+        const groups = state.favorites[cat] || [];
+        const group = groups.find(g => g.id === groupId);
+        if(!group) return;
+
+        // 第一步: 高危二次确认
+        const ok = await confirmDialog(
+            '【高危操作】一键搬迁确认',
+            `你即将对收藏夹 "${group.name}" 执行一键搬迁。\n\n` +
+            `该操作会批量剪切移动所有本地真实原文件，统一变更文件物理存储位置。\n` +
+            `操作不可撤销，请确认后再继续。`,
+            '确认搬迁',
+            true  // 使用高危样式
+        );
+        if(!ok) return;
+
+        // 第二步: 选择目标存放路径
+        const pickR = await Api.pickTargetFolder();
+        if(!pickR.ok){
+            if(pickR.msg !== '已取消选择') toast(pickR.msg, 'error');
+            return;
+        }
+        const targetPath = pickR.path;
+
+        // 第三步: 执行搬迁
+        toast('正在搬迁文件, 请稍候...', 'info');
+        const r = await Api.moveFavGroup(cat, groupId, targetPath);
+        if(r.ok){
+            toast(r.msg + '\n目标位置: ' + r.dest_dir, 'success');
+            // 刷新所有数据: 收录目录扫描 + 收藏夹数据
+            await this.refreshAll();
+            await this.loadFavGroups(cat);
+            // 如果当前正在看这个收藏夹的文件, 刷新文件列表
+            if(state.view === 'fav_items' && state.favGroupId === groupId){
+                await this.loadFavItems(cat, groupId);
+            }
+        } else {
+            toast(r.msg, 'error');
+        }
+    },
+
+    /* -------- 收藏操作 -------- */
+    async showFavDialogByIdx(cat, idx){
+        // 通过索引获取文件路径，再打开收藏弹窗
+        const file = this._getFileByIdx(cat, idx);
+        if(!file) return;
+        await this.showFavDialog(cat, file.path);
+    },
+    async showFavDialog(cat, filePath){
+        // 打开收藏弹窗：展示该分类下已有收藏夹 + 新建选项
+        window._pendingFavPath = filePath;  // 暂存路径，避免渲染到 HTML 属性中
+        const groups = await Api.getFavGroups(cat);
+        state.modal = { type:'fav_dialog', cat, groups };
+    },
+    async addToFavorites(groupId){
+        const filePath = window._pendingFavPath;
+        const cat = state.modal && state.modal.cat;
+        if(!filePath || !cat) return;
+        const r = await Api.addToFavorites(cat, groupId, filePath);
+        toast(r.msg, r.ok ? 'success' : 'error');
+        if(r.ok){
+            state.modal = null;
+            window._pendingFavPath = null;
+            // 更新当前分类视图中该文件的收藏状态
+            if(state.files[cat]){
+                const file = state.files[cat].find(f => f.path === filePath);
+                if(file) file.is_favorited = true;
+            }
+            // 同步更新搜索结果中的收藏状态（避免搜索模式下星星不同步）
+            if(state.searchResults[cat]){
+                const file = state.searchResults[cat].find(f => f.path === filePath);
+                if(file) file.is_favorited = true;
+            }
+            // 更新项目专区收藏状态
+            if(cat === 'project'){
+                const proj = state.projects.find(p => p.path === filePath);
+                if(proj) proj.is_favorited = true;
+            }
+            // 如果当前在收藏夹视图，刷新数据
+            if(state.view === 'fav_items' && state.favGroupId === groupId){
+                await this.loadFavItems(cat, groupId);
+            }
+            // 刷新收藏夹列表（数量可能变化）
+            if(state.favCategory){
+                await this.loadFavGroups(state.favCategory);
+            }
+            // 刷新当前视图以显示收藏星星变化
+            this.refreshCurrentView();
+        }
+        return r;
+    },
+    async addToNewFavGroup(name){
+        // 新建收藏夹并直接收藏文件
+        const filePath = window._pendingFavPath;
+        const cat = state.modal && state.modal.cat;
+        if(!filePath || !cat) return;
+        const createR = await Api.createFavGroup(cat, name);
+        if(!createR.ok){
+            toast(createR.msg, 'error');
+            return;
+        }
+        const r = await Api.addToFavorites(cat, createR.group.id, filePath);
+        toast(r.msg, r.ok ? 'success' : 'error');
+        if(r.ok){
+            state.modal = null;
+            window._pendingFavPath = null;
+            if(state.files[cat]){
+                const file = state.files[cat].find(f => f.path === filePath);
+                if(file) file.is_favorited = true;
+            }
+            // 同步更新搜索结果中的收藏状态（避免搜索模式下星星不同步）
+            if(state.searchResults[cat]){
+                const file = state.searchResults[cat].find(f => f.path === filePath);
+                if(file) file.is_favorited = true;
+            }
+            // 更新项目专区收藏状态
+            if(cat === 'project'){
+                const proj = state.projects.find(p => p.path === filePath);
+                if(proj) proj.is_favorited = true;
+            }
+            if(state.view === 'fav_items' && state.favGroupId === createR.group.id){
+                await this.loadFavItems(cat, createR.group.id);
+            }
+            if(state.favCategory){
+                await this.loadFavGroups(state.favCategory);
+            }
+            this.refreshCurrentView();
+        }
+    },
+    async batchAddToNewFavGroup(name){
+        // 批量新建收藏夹并收藏
+        const paths = window._pendingBatchFavPaths || [];
+        const cat = state.modal && state.modal.cat;
+        if(!paths.length || !cat) return;
+        const createR = await Api.createFavGroup(cat, name);
+        if(!createR.ok){
+            toast(createR.msg, 'error');
+            return;
+        }
+        const r = await Api.batchAddFavorites(cat, createR.group.id, paths);
+        toast(r.msg, r.ok ? 'success' : 'error');
+        if(r.ok){
+            state.modal = null;
+            window._pendingBatchFavPaths = null;
+            state.batchSelected = {};
+            const pathSet = new Set(paths);
+            if(state.files[cat]){
+                state.files[cat].forEach(f => { if(pathSet.has(f.path)) f.is_favorited = true; });
+            }
+            if(state.searchResults[cat]){
+                state.searchResults[cat].forEach(f => { if(pathSet.has(f.path)) f.is_favorited = true; });
+            }
+            if(cat === 'project'){
+                state.projects.forEach(p => { if(pathSet.has(p.path)) p.is_favorited = true; });
+            }
+            await this.loadFavGroups(cat);
+            this.updateBatchUI();
+            this.refreshCurrentView();
+        }
+    },
+    unfavByIdx(idx){
+        const file = state.favItems[idx];
+        if(!file) return;
+        this.removeFromFavorites(state.favGroupId, file.path);
+    },
+    async removeFromFavorites(groupId, filePath){
+        const cat = state.favCategory;
+        if(!cat) return;
+        const r = await Api.removeFromFavorites(cat, groupId, filePath);
+        toast(r.msg, r.ok ? 'success' : 'error');
+        if(r.ok){
+            if(state.view === 'fav_items' && state.favGroupId === groupId){
+                await this.loadFavItems(cat, groupId);
+            }
+            // 更新分类视图中该文件的收藏状态
+            if(state.files[cat]){
+                const file = state.files[cat].find(f => f.path === filePath);
+                if(file) file.is_favorited = false;
+            }
+            // 同步更新搜索结果中的收藏状态（避免搜索模式下星星不同步）
+            if(state.searchResults[cat]){
+                const file = state.searchResults[cat].find(f => f.path === filePath);
+                if(file) file.is_favorited = false;
+            }
+            // 更新项目专区收藏状态
+            if(cat === 'project'){
+                const proj = state.projects.find(p => p.path === filePath);
+                if(proj) proj.is_favorited = false;
+            }
+            this.refreshCurrentView();
+        }
+        // 同时刷新收藏夹列表数量
+        await this.loadFavGroups(cat);
+    },
+
+    /* -------- 收藏夹内文件操作 -------- */
+    clickFavFileByIdx(idx){
+        const file = state.favItems[idx];
+        if(!file) return;
+        if(state.batchMode){
+            this.toggleSelect(file.path);
+            return;
+        }
+        const cat = state.favCategory;
+        if(cat === 'project'){
+            return this.showInFolder(file.path);
+        } else if(cat === 'image'){
+            return this.openImageModal(file, 'favorites');
+        } else if(cat === 'video'){
+            return this.openVideoModal(file, 'favorites');
+        } else {
+            return Api.openFile(file.path).then(r => {
+                if(!r.ok) toast(r.msg, 'error');
+            });
+        }
+    },
+    showFavLocByIdx(idx){
+        const file = state.favItems[idx];
+        if(!file) return;
+        return this.showInFolder(file.path);
+    },
+    async prevFavImage(){
+        const list = state.favItems;
+        const current = state.modal && state.modal.file;
+        if(!current || !list.length) return;
+        const idx = list.findIndex(f => f.path === current.path);
+        if(idx <= 0) return;
+        await this.openImageModal(list[idx - 1]);
+    },
+    async nextFavImage(){
+        const list = state.favItems;
+        const current = state.modal && state.modal.file;
+        if(!current || !list.length) return;
+        const idx = list.findIndex(f => f.path === current.path);
+        if(idx < 0 || idx >= list.length - 1) return;
+        await this.openImageModal(list[idx + 1]);
+    },
+    async prevFavVideo(){
+        const list = state.favItems;
+        const current = state.modal && state.modal.file;
+        if(!current || !list.length) return;
+        const idx = list.findIndex(f => f.path === current.path);
+        if(idx <= 0) return;
+        await this.openVideoModal(list[idx - 1]);
+    },
+    async nextFavVideo(){
+        const list = state.favItems;
+        const current = state.modal && state.modal.file;
+        if(!current || !list.length) return;
+        const idx = list.findIndex(f => f.path === current.path);
+        if(idx < 0 || idx >= list.length - 1) return;
+        await this.openVideoModal(list[idx + 1]);
+    },
+
+    /* -------- 批量操作 -------- */
+    toggleBatchMode(){
+        state.batchMode = !state.batchMode;
+        if(!state.batchMode){
+            state.batchSelected = {};
+        }
+        // 重新渲染当前视图以显示/隐藏 checkbox
+        const btn = document.getElementById('batchToggleBtn');
+        if(btn) btn.textContent = state.batchMode ? '退出批量' : '批量操作';
+        this.refreshCurrentView();
+    },
+    _toggleLock: new Set(),
+    toggleSelect(path){
+        if(!path || this._toggleLock.has(path)) return;
+        this._toggleLock.add(path);
+        setTimeout(() => this._toggleLock.delete(path), 60);
+        if(state.batchSelected[path]){
+            delete state.batchSelected[path];
+        } else {
+            state.batchSelected[path] = true;
+        }
+        // 非批量模式下勾选超过2个，自动进入批量模式
+        const selectedCount = Object.keys(state.batchSelected).length;
+        if(!state.batchMode && selectedCount >= 2){
+            state.batchMode = true;
+            this.refreshCurrentView();
+        }
+        this.updateBatchUI();
+    },
+    selectAllOnPage(){
+        const currentList = this.getCurrentList();
+        currentList.forEach(f => { state.batchSelected[f.path] = true; });
+        this.updateBatchUI();
+        this.refreshCurrentView();
+    },
+    clearSelection(){
+        state.batchSelected = {};
+        this.updateBatchUI();
+        this.refreshCurrentView();
+    },
+    getCurrentList(){
+        const view = state.view;
+        if(view === 'video') return paginate(state.isSearching ? state.searchResults.video : state.files.video).items;
+        if(view === 'image') return paginate(state.isSearching ? state.searchResults.image : state.files.image).items;
+        if(view === 'document') return paginate(state.isSearching ? state.searchResults.document : state.files.document).items;
+        if(view === 'project') return paginate(state.projects).items;
+        if(view === 'fav_items') return paginate(state.favItems).items;
+        return [];
+    },
+    getSelectedPaths(){
+        return Object.keys(state.batchSelected).filter(p => state.batchSelected[p]);
+    },
+    updateBatchUI(){
+        const paths = this.getSelectedPaths();
+        const bar = document.getElementById('batchBar');
+        if(bar){
+            const countEl = bar.querySelector('.batch-count');
+            if(countEl) countEl.textContent = paths.length;
+            if(paths.length === 0){
+                bar.style.display = 'none';
+            }
+        }
+        // 更新 checkbox 视觉状态
+        document.querySelectorAll('.file-checkbox').forEach(el => {
+            const path = el.closest('.file-card, .doc-card, .folder-card')?.getAttribute('data-path')
+                      || el.getAttribute('data-path');
+            if(path){
+                const isChecked = !!state.batchSelected[path];
+                el.classList.toggle('checked', isChecked);
+                el.innerHTML = isChecked ? ICONS.checkboxChecked : ICONS.checkbox;
+            }
+        });
+    },
+    refreshCurrentView(){
+        const view = state.view;
+        if(view === 'video') renderVideoView();
+        else if(view === 'image') renderImageView();
+        else if(view === 'document') renderDocumentView();
+        else if(view === 'project') renderProjectView();
+        else if(view === 'fav_items') renderFavItemsView();
+        else if(view === 'folders') renderFoldersView();
+        else if(view === 'fav_groups') renderFavGroupsView();
+    },
+
+    /* -------- 文件删除 -------- */
+    async deleteFileMap(cat, idx, isFav){
+        let list;
+        if(isFav) list = state.favItems;
+        else if(state.isSearching) list = state.searchResults[cat];
+        else list = state.files[cat];
+        const file = list && list[idx];
+        if(!file) return;
+        const r = await Api.deleteFileMap(cat, file.path);
+        toast(r.msg, r.ok ? 'success' : 'error');
+        if(r.ok){
+            if(isFav) state.favItems = state.favItems.filter(f => f.path !== file.path);
+            else if(state.isSearching) state.searchResults[cat] = state.searchResults[cat].filter(f => f.path !== file.path);
+            else state.files[cat] = state.files[cat].filter(f => f.path !== file.path);
+            await this.loadFavGroups(cat);
+            this.refreshCurrentView();
+        }
+    },
+    async deleteFileReal(cat, idx, isFav){
+        let list;
+        if(isFav) list = state.favItems;
+        else if(state.isSearching) list = state.searchResults[cat];
+        else list = state.files[cat];
+        const file = list && list[idx];
+        if(!file) return;
+        const ok = await confirmDialog(
+            '【高危】永久删除确认',
+            `你即将永久删除本地真实文件:\n\n${file.path}\n\n⚠ 该操作会直接删除电脑本地真实原文件，删除后不可恢复！`,
+            '确认永久删除',
+            true
+        );
+        if(!ok) return;
+        const r = await Api.deleteFileReal(cat, file.path);
+        toast(r.msg, r.ok ? 'success' : 'error');
+        if(r.ok){
+            if(isFav) state.favItems = state.favItems.filter(f => f.path !== file.path);
+            else if(state.isSearching) state.searchResults[cat] = state.searchResults[cat].filter(f => f.path !== file.path);
+            else state.files[cat] = state.files[cat].filter(f => f.path !== file.path);
+            await this.loadFavGroups(cat);
+            this.refreshCurrentView();
+        }
+    },
+
+    /* -------- 搜索 -------- */
+    onSearchInput(value){
+        currentSearchKeyword = value;
+        const box = document.getElementById('searchBox');
+        const clear = box && box.querySelector('.search-clear');
+        if(clear) clear.style.display = value ? 'flex' : 'none';
+    },
+    async doSearch(){
+        const kw = currentSearchKeyword.trim();
+        if(!kw){
+            state.isSearching = false;
+            state.searchResults = {video:[], image:[], document:[]};
+            this.refreshCurrentView();
+            return;
+        }
+        state.isSearching = true;
+        const r = await Api.searchFiles(kw);
+        const raw = r || {video:[], image:[], document:[]};
+        state.searchResults = {
+            video: sortList(raw.video || []),
+            image: sortList(raw.image || []),
+            document: sortList(raw.document || [])
+        };
+        state.currentPage = 1;
+        this.refreshCurrentView();
+    },
+    clearSearch(){
+        currentSearchKeyword = '';
+        state.isSearching = false;
+        state.searchResults = {video:[], image:[], document:[]};
+        const input = document.getElementById('searchInput');
+        if(input) input.value = '';
+        const box = document.getElementById('searchBox');
+        const clear = box && box.querySelector('.search-clear');
+        if(clear) clear.style.display = 'none';
+        this.refreshCurrentView();
+    },
+
+    /* -------- 批量操作执行 -------- */
+    async batchDeleteMap(){
+        const paths = this.getSelectedPaths();
+        if(!paths.length) return toast('请先选择文件', 'error');
+        const cat = state.view === 'fav_items' ? state.favCategory : state.view;
+        let r;
+        if(state.view === 'project'){
+            r = await Api.batchRemoveProjectFolders(paths);
+        } else {
+            r = await Api.batchDeleteMap(cat, paths);
+        }
+        toast(r.msg, r.ok ? 'success' : 'error');
+        if(r.ok){
+            state.batchSelected = {};
+            const pathSet = new Set(paths);
+            if(state.view === 'fav_items') state.favItems = state.favItems.filter(f => !pathSet.has(f.path));
+            else if(state.view === 'project') state.projects = state.projects.filter(f => !pathSet.has(f.path));
+            else if(state.isSearching) state.searchResults[cat] = state.searchResults[cat].filter(f => !pathSet.has(f.path));
+            else state.files[cat] = state.files[cat].filter(f => !pathSet.has(f.path));
+            await this.loadFavGroups(cat);
+            this.updateBatchUI();
+            this.refreshCurrentView();
+        }
+    },
+    async batchDeleteReal(){
+        const paths = this.getSelectedPaths();
+        if(!paths.length) return toast('请先选择文件', 'error');
+        const cat = state.view === 'fav_items' ? state.favCategory : state.view;
+        const ok = await confirmDialog(
+            '【高危】批量永久删除确认',
+            `你即将永久删除 ${paths.length} 个本地真实文件。\n\n⚠ 该操作会直接删除电脑本地真实原文件，删除后不可恢复！`,
+            '确认永久删除',
+            true
+        );
+        if(!ok) return;
+        let r;
+        if(state.view === 'project'){
+            r = await Api.batchDeleteProjectReal(paths);
+        } else {
+            r = await Api.batchDeleteReal(cat, paths);
+        }
+        toast(r.msg, r.ok ? 'success' : 'error');
+        if(r.ok){
+            state.batchSelected = {};
+            const pathSet = new Set(paths);
+            if(state.view === 'fav_items') state.favItems = state.favItems.filter(f => !pathSet.has(f.path));
+            else if(state.view === 'project') state.projects = state.projects.filter(f => !pathSet.has(f.path));
+            else if(state.isSearching) state.searchResults[cat] = state.searchResults[cat].filter(f => !pathSet.has(f.path));
+            else state.files[cat] = state.files[cat].filter(f => !pathSet.has(f.path));
+            await this.loadFavGroups(cat);
+            this.updateBatchUI();
+            this.refreshCurrentView();
+        }
+    },
+    async batchAddFavorites(){
+        const paths = this.getSelectedPaths();
+        if(!paths.length) return toast('请先选择文件', 'error');
+        const cat = state.view === 'fav_items' ? state.favCategory : state.view;
+        // 打开收藏弹窗选择收藏夹
+        window._pendingBatchFavPaths = paths;
+        const groups = await Api.getFavGroups(cat);
+        state.modal = { type:'fav_dialog_batch', cat, groups };
+    },
+    async batchAddToFavorites(groupId){
+        const paths = window._pendingBatchFavPaths || [];
+        const cat = state.modal && state.modal.cat;
+        if(!paths.length || !cat) return;
+        const r = await Api.batchAddFavorites(cat, groupId, paths);
+        toast(r.msg, r.ok ? 'success' : 'error');
+        if(r.ok){
+            state.modal = null;
+            window._pendingBatchFavPaths = null;
+            state.batchSelected = {};
+            const pathSet = new Set(paths);
+            if(state.files[cat]){
+                state.files[cat].forEach(f => { if(pathSet.has(f.path)) f.is_favorited = true; });
+            }
+            if(state.searchResults[cat]){
+                state.searchResults[cat].forEach(f => { if(pathSet.has(f.path)) f.is_favorited = true; });
+            }
+            if(cat === 'project'){
+                state.projects.forEach(p => { if(pathSet.has(p.path)) p.is_favorited = true; });
+            }
+            await this.loadFavGroups(cat);
+            this.updateBatchUI();
+            this.refreshCurrentView();
+        }
+    },
+    async batchRemoveFavorites(){
+        const paths = this.getSelectedPaths();
+        if(!paths.length) return toast('请先选择文件', 'error');
+        const cat = state.favCategory;
+        if(!cat) return;
+        const ok = await confirmDialog('取消收藏确认', `确定取消收藏 ${paths.length} 个文件?`, '确认取消');
+        if(!ok) return;
+        const r = await Api.batchRemoveFavorites(cat, paths);
+        toast(r.msg, r.ok ? 'success' : 'error');
+        if(r.ok){
+            state.batchSelected = {};
+            if(cat === 'project'){
+                const pathSet = new Set(paths);
+                state.projects.forEach(p => { if(pathSet.has(p.path)) p.is_favorited = false; });
+            }
+            await this.loadFavItems(cat, state.favGroupId);
+            await this.loadFavGroups(cat);
+            this.updateBatchUI();
+        }
+    },
+
+    /* -------- 全局图片列表: 上一张 / 下一张 跨文件夹切换 -------- */
+    async prevImage(){
+        const listSource = state.modal && state.modal.listSource;
+        if(listSource === 'favorites') return this.prevFavImage();
+        const list = state.files.image;
+        const current = state.modal && state.modal.file;
+        if(!current || !list.length) return;
+        const idx = list.findIndex(f => f.path === current.path);
+        if(idx <= 0) return; // 边界拦截: 已是第一张, 静默不操作
+        await this.openImageModal(list[idx - 1]);
+    },
+    async nextImage(){
+        const listSource = state.modal && state.modal.listSource;
+        if(listSource === 'favorites') return this.nextFavImage();
+        const list = state.files.image;
+        const current = state.modal && state.modal.file;
+        if(!current || !list.length) return;
+        const idx = list.findIndex(f => f.path === current.path);
+        if(idx < 0 || idx >= list.length - 1) return; // 边界拦截: 已是最后一张
+        await this.openImageModal(list[idx + 1]);
+    },
+    async openImageModal(file, listSource='global'){
+        // 独立打开图片模态框 (供模态框内切换复用, 不改变原有 clickFile 逻辑)
+        // 如果当前已经是图片模态框, 说明是左右切换, 不显示 loading 避免 DOM 重建导致闪烁
+        const isSwitching = state.modal && state.modal.type === 'image';
+        if(!isSwitching){
+            state.modal = { type:'loading', text:'加载图片中...' };
+        }
+        const data = await Api.readImage(file.path);
+        if(data){
+            state.modal = { type:'image', src:data, file, listSource };
+            // 后台预加载相邻图片
+            const imgList = listSource === 'favorites' ? state.favItems : (state.files.image || []);
+            const idx = imgList.findIndex(f => f.path === file.path);
+            [idx - 1, idx + 1].forEach(i => {
+                const neighbor = imgList[i];
+                if(neighbor) Api.readImage(neighbor.path).catch(()=>{});
+            });
+        } else {
+            state.modal = null;
+            toast('图片过大或读取失败, 改用系统程序打开', 'error');
+            await Api.openFile(file.path);
+        }
+    },
+
+    /* -------- 全局视频列表: 上一个 / 下一个 跨文件夹切换 -------- */
+    async prevVideo(){
+        const listSource = state.modal && state.modal.listSource;
+        if(listSource === 'favorites') return this.prevFavVideo();
+        const list = state.files.video;
+        const current = state.modal && state.modal.file;
+        if(!current || !list.length) return;
+        const idx = list.findIndex(f => f.path === current.path);
+        if(idx <= 0) return; // 边界拦截: 已是第一个
+        await this.openVideoModal(list[idx - 1]);
+    },
+    async nextVideo(){
+        const listSource = state.modal && state.modal.listSource;
+        if(listSource === 'favorites') return this.nextFavVideo();
+        const list = state.files.video;
+        const current = state.modal && state.modal.file;
+        if(!current || !list.length) return;
+        const idx = list.findIndex(f => f.path === current.path);
+        if(idx < 0 || idx >= list.length - 1) return; // 边界拦截: 已是最后一个
+        await this.openVideoModal(list[idx + 1]);
+    },
+    async openVideoModal(file, listSource='global'){
+        // 视频统一调用系统播放器打开, 不再使用内置模态框播放
+        await Api.openFile(file.path);
+    },
+};
+// 暴露到全局, 让 onclick 内联调用 (避免 eval)
+window.App = App;
+
+/* ===========================================================
+   渲染函数 - 每次状态变化时被自动触发
+   =========================================================== */
+const $nav        = document.getElementById('navMenu');
+const $title      = document.getElementById('topbarTitle');
+const $sub        = document.getElementById('topbarSub');
+const $content    = document.getElementById('content');
+const $modalC     = document.getElementById('modalContainer');
+const $batchBar   = document.getElementById('batchBar');
+const VIEW_TITLES = {
+    folders:'我的目录', video:'视频', image:'图片', document:'文档', project:'项目',
+    fav_groups:'收藏夹列表', fav_items:'收藏内容'
+};
+const FAV_CAT_NAMES = { video:'视频', image:'图片', document:'文档', project:'项目' };
+
+watchEffect(() => {
+    try{ renderSidebar(); }catch(e){ console.error('[watchEffect] renderSidebar failed:', e); }
+    try{ renderTopbar(); }catch(e){ console.error('[watchEffect] renderTopbar failed:', e); }
+    try{ renderContent(); }catch(e){ console.error('[watchEffect] renderContent failed:', e); }
+    try{ renderModal(); }catch(e){ console.error('[watchEffect] renderModal failed:', e); }
+    try{ renderBatchBar(); }catch(e){ console.error('[watchEffect] renderBatchBar failed:', e); }
+});
+
+function renderSidebar(){
+    console.log('[renderSidebar] called, view=', state.view, 'folders=', state.folders ? state.folders.length : 'N/A');
+    const v = state.view;
+    try{
+    $nav.innerHTML = `
+      <div class="nav-group-title">收录管理</div>
+      <div class="nav-item ${v==='folders'?'active':''}" onclick="App.setView('folders')">
+          <span class="nav-icon">${ICONS.folder}</span>
+          <span class="nav-label">我的目录</span>
+          <span class="nav-count">${state.folders.length}</span>
+      </div>
+      <div class="nav-group-title">分类聚合</div>
+      <div class="nav-item ${v==='video'?'active':''}" onclick="App.setView('video')">
+          <span class="nav-icon">${ICONS.video}</span>
+          <span class="nav-label">视频</span>
+          <span class="nav-count">${state.files.video.length}</span>
+      </div>
+      <div class="nav-item ${v==='image'?'active':''}" onclick="App.setView('image')">
+          <span class="nav-icon">${ICONS.image}</span>
+          <span class="nav-label">图片</span>
+          <span class="nav-count">${state.files.image.length}</span>
+      </div>
+      <div class="nav-item ${v==='document'?'active':''}" onclick="App.setView('document')">
+          <span class="nav-icon">${ICONS.doc}</span>
+          <span class="nav-label">文档</span>
+          <span class="nav-count">${state.files.document.length}</span>
+      </div>
+      <div class="nav-item ${v==='project'?'active':''}" onclick="App.setView('project')">
+          <span class="nav-icon">${ICONS.folder}</span>
+          <span class="nav-label">项目</span>
+          <span class="nav-count">${state.projects.length}</span>
+      </div>
+      <div class="nav-group-title">我的收藏</div>
+      <div class="nav-item ${v==='fav_groups' && state.favCategory==='video'?'active':''}" onclick="App.setFavView('video')">
+          <span class="nav-icon">${ICONS.video}</span>
+          <span class="nav-label">视频</span>
+          <span class="nav-count">${state.favorites.video.length}</span>
+      </div>
+      <div class="nav-item ${v==='fav_groups' && state.favCategory==='image'?'active':''}" onclick="App.setFavView('image')">
+          <span class="nav-icon">${ICONS.image}</span>
+          <span class="nav-label">图片</span>
+          <span class="nav-count">${state.favorites.image.length}</span>
+      </div>
+      <div class="nav-item ${v==='fav_groups' && state.favCategory==='document'?'active':''}" onclick="App.setFavView('document')">
+          <span class="nav-icon">${ICONS.doc}</span>
+          <span class="nav-label">文档</span>
+          <span class="nav-count">${state.favorites.document.length}</span>
+      </div>
+      <div class="nav-item ${v==='fav_groups' && state.favCategory==='project'?'active':''}" onclick="App.setFavView('project')">
+          <span class="nav-icon">${ICONS.folder}</span>
+          <span class="nav-label">项目</span>
+          <span class="nav-count">${state.favorites.project.length}</span>
+      </div>
+    `;
+    }catch(e){
+        console.error('[renderSidebar] error:', e);
+        $nav.innerHTML = '<div style="padding:20px;color:#ef4444;font-size:12px;">侧边栏渲染出错: '+escapeHtml(String(e))+'</div>';
+    }
+}
+
+function renderTopbar(){
+    const v = state.view;
+    if(v === 'fav_groups'){
+        const catName = FAV_CAT_NAMES[state.favCategory] || '';
+        $title.textContent = catName;
+        const count = (state.favorites[state.favCategory] || []).length;
+        $sub.textContent = `共 ${count} 个收藏夹`;
+        return;
+    }
+    if(v === 'fav_items'){
+        const groups = state.favorites[state.favCategory] || [];
+        const group = groups.find(g => g.id === state.favGroupId);
+        $title.textContent = group ? group.name : '收藏夹';
+        $sub.textContent = `共 ${state.favItems.length} 个文件`;
+        return;
+    }
+    $title.textContent = VIEW_TITLES[v] || '';
+    if(v === 'folders'){
+        $sub.textContent = `已收录 ${state.folders.length} 个遍历目录 · ${state.projectFolders.length} 个项目目录`;
+    } else if(v === 'project'){
+        $sub.textContent = `共 ${state.projects.length} 个项目文件夹`;
+    } else {
+        const list = state.files[v] || [];
+        $sub.textContent = `共 ${list.length} 个 ${VIEW_TITLES[v]}`;
+    }
+}
+
+function renderContent(){
+    console.log('[renderContent] loading=', state.loading, 'favLoading=', state.favLoading, 'view=', state.view, 'folders=', state.folders.length);
+    if(state.loading){
+        $content.innerHTML = `<div class="loading"><div class="spinner"></div><span>正在扫描所有目录, 请稍候...</span></div>`;
+        return;
+    }
+    if(state.favLoading){
+        $content.innerHTML = `<div class="loading"><div class="spinner"></div><span>正在加载收藏夹, 请稍候...</span></div>`;
+        return;
+    }
+    try{
+        if(state.view === 'folders')  return renderFoldersView();
+        if(state.view === 'project')  return renderProjectView();
+        if(state.view === 'video')    return renderVideoView();
+        if(state.view === 'image')    return renderImageView();
+        if(state.view === 'document') return renderDocumentView();
+        if(state.view === 'fav_groups') return renderFavGroupsView();
+        if(state.view === 'fav_items')  return renderFavItemsView();
+        // 兜底: 如果 view 不匹配任何已知值, 显示错误信息而不是空白
+        $content.innerHTML = `
+            <div class="empty">
+                <div class="empty-icon">${ICONS.alert}</div>
+                <h3>未知视图</h3>
+                <p style="color:var(--danger);font-family:monospace;">state.view = ${escapeHtml(String(state.view))}</p>
+                <p>请尝试点击左侧导航栏切换视图, 或点击"全部刷新"按钮。</p>
+            </div>`;
+        console.error('[renderContent] unknown view:', state.view);
+    }catch(e){
+        // 渲染异常时显示错误信息, 便于排查问题
+        $content.innerHTML = `
+            <div class="empty">
+                <div class="empty-icon">${ICONS.alert}</div>
+                <h3>渲染出错</h3>
+                <p style="color:var(--danger);font-family:monospace;max-width:600px;word-break:break-all;">${escapeHtml(String(e))}</p>
+                <p>视图: ${escapeHtml(state.view)}</p>
+            </div>`;
+        console.error('renderContent error:', e);
+    }
+}
+
+function renderFoldersView(){
+    const dropClass = state.dragOver ? 'dropzone drag-over' : 'dropzone';
+
+    // 左栏：遍历收录
+    let leftHtml = `
+        <div class="section-title" style="margin-bottom:6px;">遍历该文件夹</div>
+        <p style="font-size:12px;color:var(--text-sub);margin:0 0 12px;">此处会遍历目标文件夹下的所有图片、视频以及文档</p>
+        <div class="${dropClass}" id="dropzone" style="margin-bottom:16px;">
+            <div class="dropzone-icon">${ICONS.upload}</div>
+            <h3>拖拽文件夹到此处</h3>
+            <p>支持 C / D / E / F 等任意磁盘 · 全程只记录路径</p>
+            <button class="btn btn-primary" onclick="App.pickFolder()">
+                ${ICONS.folder} 遍历该文件夹
+            </button>
+        </div>
+    `;
+    if(state.folders.length === 0){
+        leftHtml += `
+            <div class="empty" style="padding:30px 0;">
+                <div class="empty-icon">${ICONS.inbox}</div>
+                <h3>还没有收录遍历目录</h3>
+                <p>点击上方按钮或拖拽一个文件夹开始使用</p>
+            </div>`;
+    } else {
+        leftHtml += `<div class="section-title">已收录遍历目录 (${state.folders.length})</div>`;
+        leftHtml += `<div class="folder-grid">`;
+        state.folders.forEach((f, i) => {
+            const name = escapeHtml(getFolderName(f));
+            const path = escapeHtml(f);
+            leftHtml += `
+                <div class="folder-card">
+                    <div class="folder-card-icon">${ICONS.folder}</div>
+                    <div class="folder-card-info">
+                        <div class="folder-card-name" title="${path}">${name}</div>
+                        <div class="folder-card-path" title="${path}">${path}</div>
+                    </div>
+                    <div class="folder-card-actions">
+                        <button class="icon-btn" title="刷新此目录" onclick="App.folderAction('refresh',${i})">${ICONS.refresh}</button>
+                        <button class="icon-btn" title="打开文件夹" onclick="App.folderAction('open',${i})">${ICONS.external}</button>
+                        <button class="icon-btn btn-remove" title="从软件中移除 (不删原文件)" onclick="App.folderAction('remove',${i})">${ICONS.trash}</button>
+                        <button class="icon-btn btn-perm-delete" title="【高危】永久删除本地真实文件夹" onclick="event.stopPropagation();App.folderAction('deletePermanently',${i})">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        </button>
+                    </div>
+                </div>`;
+        });
+        leftHtml += `</div>`;
+    }
+
+    // 右栏：项目收录
+    let rightHtml = `
+        <div class="section-title" style="margin-bottom:6px;">选择文件夹（项目）</div>
+        <p style="font-size:12px;color:var(--text-sub);margin:0 0 12px;">主要用于管理项目文件和一些不可再拆的文件内容</p>
+        <div class="${dropClass}" id="dropzone-project" style="margin-bottom:16px;">
+            <div class="dropzone-icon">${ICONS.upload}</div>
+            <h3>拖拽文件夹到此处</h3>
+            <p>支持 C / D / E / F 等任意磁盘 · 全程只记录路径</p>
+            <button class="btn btn-primary" onclick="App.pickProjectFolder()">
+                ${ICONS.folder} 选择文件夹（项目）
+            </button>
+        </div>
+    `;
+    if(state.projectFolders.length === 0){
+        rightHtml += `
+            <div class="empty" style="padding:30px 0;">
+                <div class="empty-icon">${ICONS.inbox}</div>
+                <h3>还没有收录项目目录</h3>
+                <p>点击上方按钮添加项目文件夹</p>
+            </div>`;
+    } else {
+        rightHtml += `<div class="section-title">已收录项目目录 (${state.projectFolders.length})</div>`;
+        rightHtml += `<div class="folder-grid">`;
+        state.projectFolders.forEach((f, i) => {
+            const name = escapeHtml(getFolderName(f));
+            const path = escapeHtml(f);
+            rightHtml += `
+                <div class="folder-card">
+                    <div class="folder-card-icon">${ICONS.folder}</div>
+                    <div class="folder-card-info">
+                        <div class="folder-card-name" title="${path}">${name}</div>
+                        <div class="folder-card-path" title="${path}">${path}</div>
+                    </div>
+                    <div class="folder-card-actions">
+                        <button class="icon-btn" title="打开文件夹" onclick="App.projectFolderAction('open',${i})">${ICONS.external}</button>
+                        <button class="icon-btn btn-remove" title="从软件中移除 (不删原文件)" onclick="App.projectFolderAction('remove',${i})">${ICONS.trash}</button>
+                        <button class="icon-btn btn-perm-delete" title="【高危】永久删除本地真实文件夹" onclick="event.stopPropagation();App.projectFolderAction('deletePermanently',${i})">
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                        </button>
+                    </div>
+                </div>`;
+        });
+        rightHtml += `</div>`;
+    }
+
+    $content.innerHTML = `
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:start;">
+            <div>${leftHtml}</div>
+            <div id="projectPanel">${rightHtml}</div>
+        </div>
+    `;
+    setupDropzone();
+}
+
+function renderProjectView(){
+    const fullList = sortList(state.projects);
+    const { items: list, totalPages, page, total } = paginate(fullList);
+    if(fullList.length === 0){
+        $content.innerHTML = renderEmpty('暂无项目文件夹', '在"我的目录"页面右侧添加项目文件夹');
+        return;
+    }
+    let html = buildSortBarHtml(total);
+    html += `<div class="folder-grid">`;
+    const baseIdx = (page - 1) * state.pageSize;
+    list.forEach((f, i) => {
+        const actualIdx = baseIdx + i;
+        const path = escapeHtml(f.path);
+        const name = escapeHtml(f.name);
+        html += `
+            <div class="folder-card" data-project-idx="${actualIdx}" data-path="${path}" onclick="App.clickProjectByIdx(${actualIdx})">
+                <div class="file-checkbox ${state.batchSelected[f.path]?'checked':''}" data-path="${path}" onclick="event.stopPropagation();App.toggleSelect(this.dataset.path)" style="${state.batchMode||state.batchSelected[f.path]?'opacity:1;':''}">${state.batchSelected[f.path]?ICONS.checkboxChecked:ICONS.checkbox}</div>
+                <div class="folder-card-icon">${ICONS.folder}</div>
+                <div class="folder-card-info">
+                    <div class="folder-card-name" title="${path}">${name}</div>
+                    <div class="folder-card-path" title="${path}">${path}</div>
+                    <div class="folder-card-path">${formatSize(f.size)} · ${formatTime(f.modified)}</div>
+                </div>
+                <div class="folder-card-actions" style="${state.batchMode?'display:none;':''}">
+                    <button class="icon-btn" title="刷新" onclick="event.stopPropagation();App.loadProjects();App.refreshCurrentView();">${ICONS.refresh}</button>
+                    <button class="icon-btn" title="打开所在位置" onclick="event.stopPropagation();App.showProjectLocByIdx(${actualIdx})">${ICONS.location}</button>
+                    <button class="icon-btn btn-remove" title="从软件中移除" onclick="event.stopPropagation();App.deleteProjectMap(${actualIdx})">${ICONS.trash}</button>
+                    <button class="icon-btn btn-perm-delete" title="【高危】永久删除本地真实文件夹" onclick="event.stopPropagation();App.deleteProjectReal(${actualIdx})">${ICONS.trash}</button>
+                    <button class="icon-btn ${f.is_favorited?'fav-star-active':''}" title="${f.is_favorited?'已收藏':'收藏'}" onclick="event.stopPropagation();App.showProjectFavDialogByIdx(${actualIdx})">${f.is_favorited?ICONS.starFilled:ICONS.star}</button>
+                </div>
+            </div>`;
+    });
+    html += `</div>`;
+    html += buildPaginationHtml(page, totalPages, total, 'App.setPage');
+    $content.innerHTML = html;
+}
+
+function renderVideoView(){
+    const fullList = state.isSearching ? state.searchResults.video : state.files.video;
+    const { items: list, totalPages, page, total } = paginate(fullList);
+    if(fullList.length === 0){
+        const msg = state.isSearching ? '没有找到匹配的视频文件' : '暂无视频文件';
+        const sub = state.isSearching ? '换个关键词试试' : '试试添加包含视频的文件夹';
+        $content.innerHTML = renderEmpty(msg, sub);
+        return;
+    }
+    let html = buildSortBarHtml(total);
+    html += `<div class="file-grid video">`;
+    const baseIdx = (page - 1) * state.pageSize;
+    list.forEach((f, i) => {
+        const actualIdx = baseIdx + i;
+        const badge = f.web_playable ? '' : `<div class="file-thumb-badge">${escapeHtml(f.ext.replace('.','').toUpperCase())}</div>`;
+        html += `
+            <div class="file-card video-card" data-video-idx="${actualIdx}" data-path="${escapeHtml(f.path)}" onclick="App.clickFileByIdx('video',${actualIdx})">
+                <div class="file-checkbox ${state.batchSelected[f.path]?'checked':''}" data-path="${escapeHtml(f.path)}" onclick="event.stopPropagation();App.toggleSelect(this.dataset.path)" style="${state.batchMode||state.batchSelected[f.path]?'opacity:1;':''}">${state.batchSelected[f.path]?ICONS.checkboxChecked:ICONS.checkbox}</div>
+                <div class="file-card-actions" style="${state.batchMode?'display:none;':''}">
+                    <button class="icon-btn btn-remove" title="从软件中移除" onclick="event.stopPropagation();App.deleteFileMap('video',${actualIdx})">${ICONS.trash}</button>
+                    <button class="icon-btn btn-perm-delete" title="永久删除" onclick="event.stopPropagation();App.deleteFileReal('video',${actualIdx})">${ICONS.trash}</button>
+                    <button class="icon-btn ${f.is_favorited?'fav-star-active':''}" title="${f.is_favorited?'已收藏':'收藏'}" onclick="event.stopPropagation();App.showFavDialogByIdx('video',${actualIdx})">${f.is_favorited?ICONS.starFilled:ICONS.star}</button>
+                </div>
+                <div class="file-thumb video-thumb">
+                    <span class="file-thumb-ph">${ICONS.video}</span>
+                    ${badge}
+                    <div class="file-thumb-play">${ICONS.play}</div>
+                </div>
+                <div class="file-meta">
+                    <div class="file-name" title="${escapeHtml(f.name)}">${escapeHtml(f.name)}</div>
+                    <div class="file-info">
+                        <span>${formatSize(f.size)}</span>
+                        <button class="icon-btn" title="打开所在位置" onclick="event.stopPropagation();App.showLocByIdx('video',${actualIdx})">${ICONS.location}</button>
+                    </div>
+                </div>
+            </div>`;
+    });
+    html += `</div>`;
+    html += buildPaginationHtml(page, totalPages, total, 'App.setPage');
+    $content.innerHTML = html;
+    setupVideoPreviews();
+}
+
+function renderImageView(){
+    const fullList = state.isSearching ? state.searchResults.image : state.files.image;
+    const { items: list, totalPages, page, total } = paginate(fullList);
+    if(fullList.length === 0){
+        const msg = state.isSearching ? '没有找到匹配的图片文件' : '暂无图片文件';
+        const sub = state.isSearching ? '换个关键词试试' : '试试添加包含图片的文件夹';
+        $content.innerHTML = renderEmpty(msg, sub);
+        return;
+    }
+    let html = buildSortBarHtml(total);
+    html += `<div class="file-grid image">`;
+    const baseIdx = (page - 1) * state.pageSize;
+    list.forEach((f, i) => {
+        const actualIdx = baseIdx + i;
+        html += `
+            <div class="file-card" data-img-idx="${actualIdx}" onclick="App.clickFileByIdx('image',${actualIdx})">
+                <div class="file-checkbox ${state.batchSelected[f.path]?'checked':''}" data-path="${escapeHtml(f.path)}" onclick="event.stopPropagation();App.toggleSelect(this.dataset.path)" style="${state.batchMode||state.batchSelected[f.path]?'opacity:1;':''}">${state.batchSelected[f.path]?ICONS.checkboxChecked:ICONS.checkbox}</div>
+                <div class="file-card-actions" style="${state.batchMode?'display:none;':''}">
+                    <button class="icon-btn btn-remove" title="从软件中移除" onclick="event.stopPropagation();App.deleteFileMap('image',${actualIdx})">${ICONS.trash}</button>
+                    <button class="icon-btn btn-perm-delete" title="永久删除" onclick="event.stopPropagation();App.deleteFileReal('image',${actualIdx})">${ICONS.trash}</button>
+                    <button class="icon-btn ${f.is_favorited?'fav-star-active':''}" title="${f.is_favorited?'已收藏':'收藏'}" onclick="event.stopPropagation();App.showFavDialogByIdx('image',${actualIdx})">${f.is_favorited?ICONS.starFilled:ICONS.star}</button>
+                </div>
+                <div class="file-thumb">
+                    <span class="file-thumb-ph">${ICONS.image}</span>
+                </div>
+                <div class="file-meta">
+                    <div class="file-name" title="${escapeHtml(f.name)}">${escapeHtml(f.name)}</div>
+                    <div class="file-info">
+                        <span>${formatSize(f.size)}</span>
+                        <button class="icon-btn" title="打开所在位置" onclick="event.stopPropagation();App.showLocByIdx('image',${actualIdx})">${ICONS.location}</button>
+                    </div>
+                </div>
+            </div>`;
+    });
+    html += `</div>`;
+    html += buildPaginationHtml(page, totalPages, total, 'App.setPage');
+    $content.innerHTML = html;
+    lazyLoadImageThumbs();
+}
+
+function renderDocumentView(){
+    const fullList = state.isSearching ? state.searchResults.document : state.files.document;
+    const { items: list, totalPages, page, total } = paginate(fullList);
+    if(fullList.length === 0){
+        const msg = state.isSearching ? '没有找到匹配的文档文件' : '暂无文档文件';
+        const sub = state.isSearching ? '换个关键词试试' : '试试添加包含文档的文件夹';
+        $content.innerHTML = renderEmpty(msg, sub);
+        return;
+    }
+    let html = buildSortBarHtml(total);
+    html += `<div class="doc-grid">`;
+    const baseIdx = (page - 1) * state.pageSize;
+    list.forEach((f, i) => {
+        const actualIdx = baseIdx + i;
+        const c = docColor(f.ext);
+        html += `
+            <div class="doc-card" onclick="App.clickFileByIdx('document',${actualIdx})">
+                <div class="file-checkbox ${state.batchSelected[f.path]?'checked':''}" data-path="${escapeHtml(f.path)}" onclick="event.stopPropagation();App.toggleSelect(this.dataset.path)" style="${state.batchMode||state.batchSelected[f.path]?'opacity:1;':''}">${state.batchSelected[f.path]?ICONS.checkboxChecked:ICONS.checkbox}</div>
+                <div class="file-card-actions" style="${state.batchMode?'display:none;':''}">
+                    <button class="icon-btn btn-loc" title="打开所在位置" onclick="event.stopPropagation();App.showLocByIdx('document',${actualIdx})">${ICONS.location}</button>
+                    <button class="icon-btn btn-remove" title="从软件中移除" onclick="event.stopPropagation();App.deleteFileMap('document',${actualIdx})">${ICONS.trash}</button>
+                    <button class="icon-btn btn-perm-delete" title="永久删除" onclick="event.stopPropagation();App.deleteFileReal('document',${actualIdx})">${ICONS.trash}</button>
+                    <button class="icon-btn" title="${f.is_favorited?'已收藏':'收藏'}" style="${f.is_favorited?'color:#fbbf24;':''}" onclick="event.stopPropagation();App.showFavDialogByIdx('document',${actualIdx})">${f.is_favorited?ICONS.starFilled:ICONS.star}</button>
+                </div>
+                <div class="doc-icon ${c.cls}">${c.label}</div>
+                <div class="doc-card-meta">
+                    <div class="doc-card-name" title="${escapeHtml(f.name)}">${escapeHtml(f.name)}</div>
+                    <div class="doc-card-info">
+                        <span>${formatSize(f.size)}</span>
+                        <span>${formatTime(f.modified)}</span>
+                    </div>
+                </div>
+            </div>`;
+    });
+    html += `</div>`;
+    html += buildPaginationHtml(page, totalPages, total, 'App.setPage');
+    $content.innerHTML = html;
+}
+
+/* ===========================================================
+   收藏夹列表视图
+   =========================================================== */
+function renderFavGroupsView(){
+    const cat = state.favCategory;
+    const groups = state.favorites[cat] || [];
+    let html = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+            <button class="btn btn-primary" onclick="App.showCreateFavGroupDialog()">
+                ${ICONS.plus} 新建收藏夹
+            </button>
+        </div>
+    `;
+    if(groups.length === 0){
+        html += `
+            <div class="empty">
+                <div class="empty-icon">${ICONS.star}</div>
+                <h3>还没有收藏夹</h3>
+                <p>点击上方按钮创建第一个收藏夹，然后开始收藏文件吧</p>
+            </div>`;
+    } else {
+        html += `<div class="folder-grid">`;
+        groups.forEach(g => {
+            html += `
+                <div class="fav-group-card" onclick="App.enterFavGroup('${escapeHtml(g.id)}')">
+                    <div class="fav-group-card-icon">${ICONS.heart}</div>
+                    <div class="fav-group-card-info">
+                        <div class="fav-group-card-name" title="${escapeHtml(g.name)}">${escapeHtml(g.name)}</div>
+                        <div class="fav-group-card-count">${g.count} 个文件</div>
+                    </div>
+                    <div class="fav-group-card-actions">
+                        <button class="icon-btn" title="一键搬迁" onclick="event.stopPropagation();App.moveFavGroup('${escapeHtml(g.id)}')">${ICONS.move}</button>
+                        <button class="icon-btn" title="重命名" onclick="event.stopPropagation();App.showRenameFavGroupDialog('${escapeHtml(g.id)}','${escapeHtml(g.name)}')">${ICONS.edit}</button>
+                        <button class="icon-btn danger" title="删除收藏夹" onclick="event.stopPropagation();App.deleteFavGroup('${escapeHtml(g.id)}')">${ICONS.trash}</button>
+                    </div>
+                </div>`;
+        });
+        html += `</div>`;
+    }
+    $content.innerHTML = html;
+}
+
+/* ===========================================================
+   收藏夹内文件视图
+   =========================================================== */
+function renderFavItemsView(){
+    const cat = state.favCategory;
+    let sourceList = state.favItems;
+    // 收藏页本地搜索过滤
+    if(state.isSearching && currentSearchKeyword){
+        const kw = currentSearchKeyword.toLowerCase();
+        sourceList = sourceList.filter(f => f.name.toLowerCase().includes(kw));
+    }
+    const fullList = sourceList;
+    const { items: list, totalPages, page, total } = paginate(fullList);
+
+    // 顶部返回栏
+    let html = `
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;">
+            <button class="btn" onclick="App.backToFavGroups()">
+                ${ICONS.back} 返回收藏夹列表
+            </button>
+        </div>
+    `;
+
+    if(fullList.length === 0){
+        const msg = state.isSearching ? '没有找到匹配的文件' : '该收藏夹为空';
+        const sub = state.isSearching ? '换个关键词试试' : `去 ${FAV_CAT_NAMES[cat]} 添加一些收藏吧`;
+        html += `
+            <div class="empty">
+                <div class="empty-icon">${ICONS.inbox}</div>
+                <h3>${msg}</h3>
+                <p>${sub}</p>
+            </div>`;
+        $content.innerHTML = html;
+        return;
+    }
+
+    html += buildSortBarHtml(total);
+    const baseIdx = (page - 1) * state.pageSize;
+
+    if(cat === 'video'){
+        html += `<div class="file-grid video">`;
+        list.forEach((f, i) => {
+            const actualIdx = baseIdx + i;
+            const badge = f.web_playable ? '' : `<div class="file-thumb-badge">${escapeHtml(f.ext.replace('.','').toUpperCase())}</div>`;
+            html += `
+                <div class="file-card video-card" data-video-idx="${actualIdx}" data-path="${escapeHtml(f.path)}" onclick="App.clickFavFileByIdx(${actualIdx})">
+                    <div class="file-checkbox ${state.batchSelected[f.path]?'checked':''}" data-path="${escapeHtml(f.path)}" onclick="event.stopPropagation();App.toggleSelect(this.dataset.path)" style="${state.batchMode||state.batchSelected[f.path]?'opacity:1;':''}">${state.batchSelected[f.path]?ICONS.checkboxChecked:ICONS.checkbox}</div>
+                    <div class="file-card-actions" style="${state.batchMode?'display:none;':''}">
+                        <button class="icon-btn btn-remove" title="从软件中移除" onclick="event.stopPropagation();App.deleteFileMap('video',${actualIdx},true)">${ICONS.trash}</button>
+                        <button class="icon-btn btn-perm-delete" title="永久删除" onclick="event.stopPropagation();App.deleteFileReal('video',${actualIdx},true)">${ICONS.trash}</button>
+                        <button class="icon-btn fav-unfav-btn" title="取消收藏" onclick="event.stopPropagation();App.unfavByIdx(${actualIdx})">${ICONS.starFilled}</button>
+                    </div>
+                    <div class="file-thumb video-thumb">
+                        <span class="file-thumb-ph">${ICONS.video}</span>
+                        ${badge}
+                        <div class="file-thumb-play">${ICONS.play}</div>
+                    </div>
+                    <div class="file-meta">
+                        <div class="file-name" title="${escapeHtml(f.name)}">${escapeHtml(f.name)}</div>
+                        <div class="file-info">
+                            <span>${formatSize(f.size)}</span>
+                            <button class="icon-btn" title="打开所在位置" onclick="event.stopPropagation();App.showFavLocByIdx(${actualIdx})">${ICONS.location}</button>
+                        </div>
+                    </div>
+                </div>`;
+        });
+        html += `</div>`;
+        html += buildPaginationHtml(page, totalPages, total, 'App.setPage');
+        $content.innerHTML = html;
+        setupVideoPreviews();
+    } else if(cat === 'image'){
+        html += `<div class="file-grid image">`;
+        list.forEach((f, i) => {
+            const actualIdx = baseIdx + i;
+            html += `
+                <div class="file-card" data-img-idx="${actualIdx}" onclick="App.clickFavFileByIdx(${actualIdx})">
+                    <div class="file-checkbox ${state.batchSelected[f.path]?'checked':''}" data-path="${escapeHtml(f.path)}" onclick="event.stopPropagation();App.toggleSelect(this.dataset.path)" style="${state.batchMode||state.batchSelected[f.path]?'opacity:1;':''}">${state.batchSelected[f.path]?ICONS.checkboxChecked:ICONS.checkbox}</div>
+                    <div class="file-card-actions" style="${state.batchMode?'display:none;':''}">
+                        <button class="icon-btn btn-remove" title="从软件中移除" onclick="event.stopPropagation();App.deleteFileMap('image',${actualIdx},true)">${ICONS.trash}</button>
+                        <button class="icon-btn btn-perm-delete" title="永久删除" onclick="event.stopPropagation();App.deleteFileReal('image',${actualIdx},true)">${ICONS.trash}</button>
+                        <button class="icon-btn fav-unfav-btn" title="取消收藏" onclick="event.stopPropagation();App.unfavByIdx(${actualIdx})">${ICONS.starFilled}</button>
+                    </div>
+                    <div class="file-thumb">
+                        <span class="file-thumb-ph">${ICONS.image}</span>
+                    </div>
+                    <div class="file-meta">
+                        <div class="file-name" title="${escapeHtml(f.name)}">${escapeHtml(f.name)}</div>
+                        <div class="file-info">
+                            <span>${formatSize(f.size)}</span>
+                            <button class="icon-btn" title="打开所在位置" onclick="event.stopPropagation();App.showFavLocByIdx(${actualIdx})">${ICONS.location}</button>
+                        </div>
+                    </div>
+                </div>`;
+        });
+        html += `</div>`;
+        html += buildPaginationHtml(page, totalPages, total, 'App.setPage');
+        $content.innerHTML = html;
+        lazyLoadFavImageThumbs();
+    } else if(cat === 'project'){
+        html += `<div class="folder-grid">`;
+        list.forEach((f, i) => {
+            const actualIdx = baseIdx + i;
+            const path = escapeHtml(f.path);
+            const name = escapeHtml(f.name);
+            html += `
+                <div class="folder-card" onclick="App.clickFavFileByIdx(${actualIdx})">
+                    <div class="file-checkbox ${state.batchSelected[f.path]?'checked':''}" data-path="${path}" onclick="event.stopPropagation();App.toggleSelect(this.dataset.path)" style="${state.batchMode||state.batchSelected[f.path]?'opacity:1;':''}">${state.batchSelected[f.path]?ICONS.checkboxChecked:ICONS.checkbox}</div>
+                    <div class="folder-card-icon">${ICONS.folder}</div>
+                    <div class="folder-card-info">
+                        <div class="folder-card-name" title="${path}">${name}</div>
+                        <div class="folder-card-path" title="${path}">${path}</div>
+                        <div class="folder-card-path">${formatSize(f.size)} · ${formatTime(f.modified)}</div>
+                    </div>
+                    <div class="folder-card-actions" style="${state.batchMode?'display:none;':''}">
+                        <button class="icon-btn btn-remove" title="从软件中移除" onclick="event.stopPropagation();App.deleteFileMap('project',${actualIdx},true)">${ICONS.trash}</button>
+                        <button class="icon-btn btn-perm-delete" title="永久删除" onclick="event.stopPropagation();App.deleteFileReal('project',${actualIdx},true)">${ICONS.trash}</button>
+                        <button class="icon-btn fav-unfav-btn" title="取消收藏" onclick="event.stopPropagation();App.unfavByIdx(${actualIdx})">${ICONS.starFilled}</button>
+                    </div>
+                </div>`;
+        });
+        html += `</div>`;
+        html += buildPaginationHtml(page, totalPages, total, 'App.setPage');
+        $content.innerHTML = html;
+    } else {
+        // document
+        html += `<div class="doc-grid">`;
+        list.forEach((f, i) => {
+            const actualIdx = baseIdx + i;
+            const c = docColor(f.ext);
+            html += `
+                <div class="doc-card" onclick="App.clickFavFileByIdx(${actualIdx})">
+                    <div class="file-checkbox ${state.batchSelected[f.path]?'checked':''}" data-path="${escapeHtml(f.path)}" onclick="event.stopPropagation();App.toggleSelect(this.dataset.path)" style="${state.batchMode||state.batchSelected[f.path]?'opacity:1;':''}">${state.batchSelected[f.path]?ICONS.checkboxChecked:ICONS.checkbox}</div>
+                    <div class="file-card-actions" style="${state.batchMode?'display:none;':''}">
+                        <button class="icon-btn btn-remove" title="从软件中移除" onclick="event.stopPropagation();App.deleteFileMap('document',${actualIdx},true)">${ICONS.trash}</button>
+                        <button class="icon-btn btn-perm-delete" title="永久删除" onclick="event.stopPropagation();App.deleteFileReal('document',${actualIdx},true)">${ICONS.trash}</button>
+                        <button class="icon-btn fav-unfav-btn" title="取消收藏" onclick="event.stopPropagation();App.unfavByIdx(${actualIdx})">${ICONS.starFilled}</button>
+                    </div>
+                    <div class="doc-icon ${c.cls}">${c.label}</div>
+                    <div class="doc-card-meta">
+                        <div class="doc-card-name" title="${escapeHtml(f.name)}">${escapeHtml(f.name)}</div>
+                        <div class="doc-card-info">
+                            <span>${formatSize(f.size)}</span>
+                            <span>${formatTime(f.modified)}</span>
+                        </div>
+                    </div>
+                    <div class="doc-card-actions" style="${state.batchMode?'display:none;':''}">
+                        <button class="icon-btn" title="打开所在位置" onclick="event.stopPropagation();App.showFavLocByIdx(${actualIdx})">${ICONS.location}</button>
+                    </div>
+                </div>`;
+        });
+        html += `</div>`;
+        html += buildPaginationHtml(page, totalPages, total, 'App.setPage');
+        $content.innerHTML = html;
+    }
+}
+
+function renderEmpty(title, sub){
+    return `
+        <div class="empty">
+            <div class="empty-icon">${ICONS.inbox}</div>
+            <h3>${title}</h3>
+            <p>${sub}</p>
+        </div>`;
+}
+
+/* ===========================================================
+   批量操作浮动栏
+   =========================================================== */
+function renderBatchBar(){
+    if(!$batchBar) return;
+    const paths = Object.keys(state.batchSelected).filter(p => state.batchSelected[p]);
+    if(!state.batchMode || paths.length === 0){
+        $batchBar.style.display = 'none';
+        return;
+    }
+    const isFav = state.view === 'fav_items';
+    const showUnfav = isFav;
+    const showFav = !isFav;
+    $batchBar.style.display = 'flex';
+    $batchBar.className = 'batch-bar';
+    $batchBar.innerHTML = `
+        <div class="batch-bar-info">已选 <strong class="batch-count">${paths.length}</strong> 项</div>
+        ${showFav ? `<button class="btn btn-primary" onclick="App.batchAddFavorites()">${ICONS.star} 收藏</button>` : ''}
+        ${showUnfav ? `<button class="btn btn-warning" onclick="App.batchRemoveFavorites()">${ICONS.starFilled} 取消</button>` : ''}
+        <button class="btn btn-secondary" onclick="App.batchDeleteMap()">${ICONS.close} 移除</button>
+        <button class="btn btn-danger" onclick="App.batchDeleteReal()">${ICONS.trash} 删除</button>
+        <button class="btn btn-primary" onclick="App.selectAllOnPage()">${ICONS.check} 全选</button>
+        <button class="btn" onclick="App.clearSelection()">${ICONS.close} 清空</button>
+        <button class="btn" onclick="App.toggleBatchMode()">退出</button>
+    `;
+}
+
+/* ===========================================================
+   模态框: 图片预览 / 视频播放 / 加载中
+   =========================================================== */
+function renderModal(){
+    const m = state.modal;
+    if(!m){ $modalC.innerHTML = ''; return; }
+
+    if(m.type === 'loading'){
+        $modalC.innerHTML = `
+            <div class="modal-mask" onclick="App.closeModal()">
+                <div class="loading" style="color:#fff;">
+                    <div class="spinner" style="border-color:rgba(255,255,255,.2);border-top-color:#fff;"></div>
+                    <span>${escapeHtml(m.text||'加载中...')}</span>
+                </div>
+            </div>`;
+        return;
+    }
+
+    if(m.type === 'image'){
+        const file = m.file || {};
+        // 计算当前图片位置, 用于边界判断 (支持全局列表和收藏夹列表)
+        const imgList = m.listSource === 'favorites' ? state.favItems : (state.files.image || []);
+        const imgIdx = imgList.findIndex(f => f.path === file.path);
+        const prevCls = imgIdx <= 0 ? 'modal-nav modal-nav-prev disabled' : 'modal-nav modal-nav-prev';
+        const nextCls = imgIdx < 0 || imgIdx >= imgList.length - 1 ? 'modal-nav modal-nav-next disabled' : 'modal-nav modal-nav-next';
+        // 复用已有 DOM: 如果当前已经是图片模态框, 只更新 src/文本/按钮状态, 避免背景蒙层重建导致闪烁
+        const existingMask = $modalC.querySelector('.modal-mask');
+        const existingImg = existingMask && existingMask.querySelector('.modal-image');
+        if(existingImg){
+            console.log('[DOM复用] 图片切换 - 只更新src, 不重建DOM');
+            existingImg.src = m.src;
+            existingImg.alt = escapeHtml(file.name||'');
+            const infoName = existingMask.querySelector('.modal-info-name');
+            const infoPath = existingMask.querySelector('.modal-info-path');
+            if(infoName) infoName.textContent = escapeHtml(file.name||'');
+            if(infoPath) infoPath.textContent = escapeHtml(file.path||'');
+            const prevBtn = existingMask.querySelector('.modal-nav-prev');
+            const nextBtn = existingMask.querySelector('.modal-nav-next');
+            if(prevBtn) prevBtn.className = prevCls;
+            if(nextBtn) nextBtn.className = nextCls;
+            return;
+        }
+        console.log('[DOM重建] 图片首次打开 - 完整重建模态框');
+        $modalC.innerHTML = `
+            <div class="modal-mask" onclick="if(event.target===this)App.closeModal()">
+                <button class="modal-close" onclick="App.closeModal()">${ICONS.close}</button>
+                <div class="modal-info">
+                    <div class="modal-info-name">${escapeHtml(file.name||'')}</div>
+                    <div class="modal-info-path">${escapeHtml(file.path||'')}</div>
+                </div>
+                <button class="${prevCls}" onclick="App.prevImage()" title="上一张">‹</button>
+                <button class="${nextCls}" onclick="App.nextImage()" title="下一张">›</button>
+                <img class="modal-image" src="${m.src}" alt="${escapeHtml(file.name||'')}">
+            </div>`;
+        return;
+    }
+
+    if(m.type === 'video'){
+        const file = m.file || {};
+        // 计算当前视频位置, 用于边界判断 (支持全局列表和收藏夹列表)
+        const vidList = m.listSource === 'favorites' ? state.favItems : (state.files.video || []);
+        const vidIdx = vidList.findIndex(f => f.path === file.path);
+        const prevCls = vidIdx <= 0 ? 'modal-nav modal-nav-prev disabled' : 'modal-nav modal-nav-prev';
+        const nextCls = vidIdx < 0 || vidIdx >= vidList.length - 1 ? 'modal-nav modal-nav-next disabled' : 'modal-nav modal-nav-next';
+        // 复用已有 DOM: 如果当前已经是视频模态框, 只更新 src/文本/按钮状态
+        const existingMask = $modalC.querySelector('.modal-mask');
+        const existingVideo = existingMask && existingMask.querySelector('.modal-video');
+        if(existingVideo){
+            console.log('[DOM复用] 视频切换 - 只更新src, 不重建DOM');
+            existingVideo.src = m.src;
+            existingVideo.load();
+            existingVideo.play().catch(()=>{});
+            const infoName = existingMask.querySelector('.modal-info-name');
+            const infoPath = existingMask.querySelector('.modal-info-path');
+            if(infoName) infoName.textContent = escapeHtml(file.name||'');
+            if(infoPath) infoPath.textContent = escapeHtml(file.path||'');
+            const prevBtn = existingMask.querySelector('.modal-nav-prev');
+            const nextBtn = existingMask.querySelector('.modal-nav-next');
+            if(prevBtn) prevBtn.className = prevCls;
+            if(nextBtn) nextBtn.className = nextCls;
+            return;
+        }
+        console.log('[DOM重建] 视频首次打开 - 完整重建模态框');
+        $modalC.innerHTML = `
+            <div class="modal-mask" onclick="if(event.target===this)App.closeModal()">
+                <button class="modal-close" onclick="App.closeModal()">${ICONS.close}</button>
+                <div class="modal-info">
+                    <div class="modal-info-name">${escapeHtml(file.name||'')}</div>
+                    <div class="modal-info-path">${escapeHtml(file.path||'')}</div>
+                </div>
+                <button class="${prevCls}" onclick="App.prevVideo()" title="上一个">‹</button>
+                <button class="${nextCls}" onclick="App.nextVideo()" title="下一个">›</button>
+                <video class="modal-video" src="${m.src}" controls autoplay></video>
+            </div>`;
+        return;
+    }
+
+    if(m.type === 'fav_dialog'){
+        const {cat, groups} = m;
+        const catLabel = {video:'视频', image:'图片', document:'文档'}[cat] || '';
+        let groupsHtml = '';
+        if(groups && groups.length){
+            groupsHtml = groups.map(g => `
+                <div class="fav-dialog-group-item" onclick="App.addToFavorites('${escapeHtml(g.id)}')">
+                    <span>${ICONS.folder}</span>
+                    <span class="name">${escapeHtml(g.name)}</span>
+                    <span class="count">${g.count} 个文件</span>
+                </div>
+            `).join('');
+        } else {
+            groupsHtml = `<p style="color:var(--text-sub);font-size:13px;text-align:center;padding:12px;">
+                还没有收藏夹，请在下方新建一个
+            </p>`;
+        }
+        $modalC.innerHTML = `
+            <div class="modal-mask">
+                <div class="dialog" style="width:420px;">
+                    <h3>收藏${escapeHtml(catLabel)}</h3>
+                    <p style="font-size:13px;color:var(--text-sub);margin-bottom:12px;">选择收藏夹，或新建一个：</p>
+                    <div class="fav-dialog-body">
+                        <div class="fav-dialog-groups">${groupsHtml}</div>
+                        <div class="fav-dialog-new">
+                            <input type="text" id="favNewGroupName" placeholder="输入新收藏夹名称..."
+                                onkeydown="if(event.key==='Enter')App.addToNewFavGroup(document.getElementById('favNewGroupName').value)"
+                            >
+                            <button class="btn btn-primary" onclick="App.addToNewFavGroup(document.getElementById('favNewGroupName').value)">新建并收藏</button>
+                        </div>
+                    </div>
+                    <div class="dialog-actions" style="margin-top:16px;">
+                        <button class="btn" onclick="App.closeModal();window._pendingFavPath=null;">取消</button>
+                    </div>
+                </div>
+            </div>`;
+        // 自动聚焦输入框
+        setTimeout(() => {
+            const input = document.getElementById('favNewGroupName');
+            if(input) input.focus();
+        }, 50);
+        return;
+    }
+
+    if(m.type === 'fav_dialog_batch'){
+        const {cat, groups} = m;
+        const catLabel = {video:'视频', image:'图片', document:'文档'}[cat] || '';
+        let groupsHtml = '';
+        if(groups && groups.length){
+            groupsHtml = groups.map(g => `
+                <div class="fav-dialog-group-item" onclick="App.batchAddToFavorites('${escapeHtml(g.id)}')">
+                    <span>${ICONS.folder}</span>
+                    <span class="name">${escapeHtml(g.name)}</span>
+                    <span class="count">${g.count} 个文件</span>
+                </div>
+            `).join('');
+        } else {
+            groupsHtml = `<p style="color:var(--text-sub);font-size:13px;text-align:center;padding:12px;">
+                还没有收藏夹，请在下方新建一个
+            </p>`;
+        }
+        $modalC.innerHTML = `
+            <div class="modal-mask">
+                <div class="dialog" style="width:420px;">
+                    <h3>批量收藏${escapeHtml(catLabel)}</h3>
+                    <p style="font-size:13px;color:var(--text-sub);margin-bottom:12px;">选择收藏夹，或新建一个：</p>
+                    <div class="fav-dialog-body">
+                        <div class="fav-dialog-groups">${groupsHtml}</div>
+                        <div class="fav-dialog-new">
+                            <input type="text" id="favNewGroupName" placeholder="输入新收藏夹名称..."
+                                onkeydown="if(event.key==='Enter')App.batchAddToNewFavGroup(document.getElementById('favNewGroupName').value)"
+                            >
+                            <button class="btn btn-primary" onclick="App.batchAddToNewFavGroup(document.getElementById('favNewGroupName').value)">新建并收藏</button>
+                        </div>
+                    </div>
+                    <div class="dialog-actions" style="margin-top:16px;">
+                        <button class="btn" onclick="App.closeModal();window._pendingBatchFavPaths=null;">取消</button>
+                    </div>
+                </div>
+            </div>`;
+        setTimeout(() => {
+            const input = document.getElementById('favNewGroupName');
+            if(input) input.focus();
+        }, 50);
+        return;
+    }
+
+    if(m.type === 'prompt'){
+        $modalC.innerHTML = `
+            <div class="modal-mask">
+                <div class="dialog">
+                    <h3>${escapeHtml(m.title)}</h3>
+                    <p style="font-size:13px;color:var(--text-sub);margin-bottom:12px;">${escapeHtml(m.message)}</p>
+                    <input type="text" id="promptInput" value="${escapeHtml(m.defaultValue||'')}" placeholder="请输入..."
+                        style="width:100%;height:38px;padding:0 12px;border:1px solid var(--border);border-radius:var(--radius-sm);font-size:13px;outline:none;margin-bottom:16px;"
+                        onkeydown="if(event.key==='Enter')__promptResolve(document.getElementById('promptInput').value)"
+                    >
+                    <div class="dialog-actions">
+                        <button class="btn" onclick="__promptResolve(null)">取消</button>
+                        <button class="btn btn-primary" onclick="__promptResolve(document.getElementById('promptInput').value)">确认</button>
+                    </div>
+                </div>
+            </div>`;
+        setTimeout(() => {
+            const input = document.getElementById('promptInput');
+            if(input){ input.focus(); input.select(); }
+        }, 50);
+        return;
+    }
+
+}
+
+/* ===========================================================
+   通用工具: confirm / toast / esc(给单引号属性用)
+   =========================================================== */
+function esc(s){ return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
+
+function confirmDialog(title, message, okText, danger=false){
+    return new Promise(resolve => {
+        const $t = document.getElementById('toastContainer');
+        const id = 'tc_' + Date.now() + Math.random();
+        const okCls = danger ? 'btn btn-danger' : 'btn btn-primary';
+        const wrapCls = danger ? 'toast confirm danger' : 'toast confirm';
+        $t.insertAdjacentHTML('beforeend',
+            `<div class="${wrapCls}" id="${id}">
+                <div class="toast-title">${escapeHtml(title)}</div>
+                <div class="toast-msg">${escapeHtml(message).replace(/\n/g,'<br>')}</div>
+                <div class="toast-confirm-actions">
+                    <button class="btn" onclick="document.getElementById('${id}').remove();__tcResolve_${id.replace(/\./g,'_')}(false)">取消</button>
+                    <button class="${okCls}" onclick="document.getElementById('${id}').remove();__tcResolve_${id.replace(/\./g,'_')}(true)">${escapeHtml(okText||'确认')}</button>
+                </div>
+            </div>`);
+        window['__tcResolve_' + id.replace(/\./g,'_')] = (val) => {
+            delete window['__tcResolve_' + id.replace(/\./g,'_')];
+            resolve(val);
+        };
+    });
+}
+
+function promptDialog(title, message, defaultValue=''){
+    return new Promise(resolve => {
+        state.modal = { type:'prompt', title, message, defaultValue };
+        window.__promptResolve = (val) => {
+            state.modal = null;
+            window.__promptResolve = null;
+            resolve(val);
+        };
+    });
+}
+
+function toast(message, type){
+    const $t = document.getElementById('toastContainer');
+    const id = 't_' + Date.now() + Math.random();
+    const icon = type==='success' ? ICONS.check
+               : type==='error'   ? ICONS.alert
+               : ICONS.inbox;
+    $t.insertAdjacentHTML('beforeend',
+        `<div class="toast ${type||''}" id="${id}">${icon}<span>${escapeHtml(message)}</span></div>`);
+    setTimeout(() => {
+        const el = document.getElementById(id);
+        if(el){ el.style.transition='opacity .3s'; el.style.opacity='0';
+                setTimeout(()=>el.remove(), 320); }
+    }, 2400);
+}
+
+/* ===========================================================
+   拖拽到拖拽区 - 显式 dropzone 内事件
+   =========================================================== */
+function setupDropzone(){
+    // 为所有 dropzone 绑定拖拽悬停高亮
+    document.querySelectorAll('.dropzone').forEach(dz => {
+        dz.addEventListener('dragover', e => { e.preventDefault(); state.dragOver = true; });
+        dz.addEventListener('dragleave', e => {
+            e.preventDefault();
+            if(!dz.contains(e.relatedTarget)) state.dragOver = false;
+        });
+    });
+    // drop 由全局 document 统一处理（根据目标区域判断是遍历还是项目）
+}
+
+/* ===========================================================
+   视频悬浮预览: 封面 + 悬浮循环播放
+   1. 默认状态: 显示 OpenCV 截取的中间帧封面
+   2. 鼠标悬浮: 连贯循环快速播放预览帧序列
+   3. 鼠标移开: 立刻停止播放，切回静态封面
+   全程只读取视频本地原始路径，不复制/转码/修改原文件
+   =========================================================== */
+const _videoPreviewCache = new Map();   // path -> {frames, timer, index}
+const _VIDEO_PREVIEW_FPS = 4;           // 预览帧率 4fps，32帧 = 8秒完整概览
+const _VIDEO_PREVIEW_DELAY = 1000;      // 悬停 1 秒后才加载预览
+const _VIDEO_PREVIEW_CACHE_MAX = 6;     // 最多缓存 6 个视频的预览帧
+let _videoPreviewDelayTimer = null;     // 延迟定时器
+let _currentPreviewPath = null;         // 当前正在预览的视频路径（限制并发=1）
+let _hoveringPath = null;               // 当前鼠标所在的卡片路径，用于异步请求返回后校验
+
+async function setupVideoPreviews(){
+    const cards = $content.querySelectorAll('.video-card');
+    if(!cards.length) return;
+
+    // 第一步: 懒加载封面（进入视口才请求，避免一次性加载过多）
+    if('IntersectionObserver' in window){
+        const coverObs = new IntersectionObserver(async (entries) => {
+            for(const ent of entries){
+                if(!ent.isIntersecting) continue;
+                coverObs.unobserve(ent.target);
+                const path = ent.target.getAttribute('data-path');
+                const thumb = ent.target.querySelector('.video-thumb');
+                if(!path || !thumb) continue;
+
+                // 异步请求封面（中间帧），优先读磁盘缓存
+                const cover = await Api.getVideoCover(path);
+                if(cover){
+                    const img = document.createElement('img');
+                    img.src = cover;
+                    img.className = 'video-cover';
+                    img.style.cssText = 'width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;z-index:1;';
+                    thumb.appendChild(img);
+                    // 隐藏默认图标
+                    const ph = thumb.querySelector('.file-thumb-ph');
+                    if(ph) ph.style.display = 'none';
+                }
+            }
+        }, { rootMargin:'150px' });
+        cards.forEach(c => coverObs.observe(c));
+    }
+
+    // 第二步: 绑定悬浮/移开事件（事件委托，mouseover/mouseout 冒泡阶段）
+    // 通过 relatedTarget 过滤子元素间移动，悬停 1 秒后触发预览，限制并发=1，移开立即释放内存
+    $content.addEventListener('mouseover', (e) => {
+        const card = e.target.closest('.video-card');
+        if(!card) return;
+        const path = card.getAttribute('data-path');
+        if(!path) return;
+        // 过滤子元素间移动：relatedTarget 在卡片内部说明是从子元素移入，忽略
+        if(card.contains(e.relatedTarget)) return;
+
+        _hoveringPath = path;
+
+        // 清除上一个延迟定时器（防止快速划过时堆积）
+        if(_videoPreviewDelayTimer){
+            clearTimeout(_videoPreviewDelayTimer);
+            _videoPreviewDelayTimer = null;
+        }
+
+        // 如果已经有其他卡片在预览，先停止它（限制并发=1）
+        if(_currentPreviewPath && _currentPreviewPath !== path){
+            const prevCard = $content.querySelector('.video-card[data-path="' + CSS.escape(_currentPreviewPath) + '"]');
+            if(prevCard) stopVideoHoverPreview(prevCard, true);
+        }
+
+        // 延迟 1 秒后再启动预览
+        _videoPreviewDelayTimer = setTimeout(() => {
+            _videoPreviewDelayTimer = null;
+            startVideoHoverPreview(card, path);
+        }, _VIDEO_PREVIEW_DELAY);
+    });
+
+    $content.addEventListener('mouseout', (e) => {
+        const card = e.target.closest('.video-card');
+        if(!card) return;
+        const path = card.getAttribute('data-path');
+        if(!path) return;
+        // 过滤子元素间移动：relatedTarget 在卡片内部说明是移入子元素，忽略
+        if(card.contains(e.relatedTarget)) return;
+
+        _hoveringPath = null;
+
+        // 清除延迟定时器（防止离开后定时器仍然触发）
+        if(_videoPreviewDelayTimer){
+            clearTimeout(_videoPreviewDelayTimer);
+            _videoPreviewDelayTimer = null;
+        }
+
+        stopVideoHoverPreview(card, true);
+    });
+}
+
+async function startVideoHoverPreview(card, path){
+    const thumb = card.querySelector('.video-thumb');
+    if(!thumb) return;
+
+    _currentPreviewPath = path;
+
+    // 获取或创建预览 img 元素
+    let previewImg = thumb.querySelector('.video-preview-img');
+    if(!previewImg){
+        previewImg = document.createElement('img');
+        previewImg.className = 'video-preview-img';
+        previewImg.style.cssText = 'width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0;z-index:2;display:none;';
+        thumb.appendChild(previewImg);
+    }
+
+    // 获取或缓存预览帧
+    let cache = _videoPreviewCache.get(path);
+    if(!cache || !cache.frames){
+        // 首次悬浮此视频，向后端请求预览帧序列
+        const frames = await Api.getVideoPreview(path);
+
+        // 关键修复：请求返回后检查鼠标是否仍然在此卡片上，若已移走则不显示预览
+        if(_hoveringPath !== path){
+            _currentPreviewPath = null;
+            return;
+        }
+
+        if(!frames || !frames.length){
+            _currentPreviewPath = null;
+            return;
+        }
+        cache = { frames, timer:null, index:0 };
+        // 缓存上限保护：超出时淘汰最早进入的
+        if(_videoPreviewCache.size >= _VIDEO_PREVIEW_CACHE_MAX){
+            const firstKey = _videoPreviewCache.keys().next().value;
+            _videoPreviewCache.delete(firstKey);
+        }
+        _videoPreviewCache.set(path, cache);
+    }
+
+    // 再次检查鼠标是否仍然在卡片上（缓存命中时也需要）
+    if(_hoveringPath !== path){
+        _currentPreviewPath = null;
+        return;
+    }
+
+    // 隐藏封面，显示预览层
+    const coverImg = thumb.querySelector('.video-cover');
+    const ph = thumb.querySelector('.file-thumb-ph');
+    if(coverImg) coverImg.style.display = 'none';
+    if(ph) ph.style.display = 'none';
+    previewImg.style.display = 'block';
+
+    // 启动循环切换帧
+    const frameMs = 1000 / _VIDEO_PREVIEW_FPS;  // 约 83ms
+    cache.index = 0;
+    if(cache.timer) clearInterval(cache.timer);
+
+    cache.timer = setInterval(() => {
+        if(!cache || !cache.frames || !cache.frames.length) return;
+        previewImg.src = cache.frames[cache.index];
+        cache.index = (cache.index + 1) % cache.frames.length;
+    }, frameMs);
+}
+
+/**
+ * 停止视频预览
+ * @param {HTMLElement} card - 视频卡片
+ * @param {boolean} releaseMemory - 是否释放内存（移开时传 true，切页时传 false）
+ */
+function stopVideoHoverPreview(card, releaseMemory){
+    const thumb = card.querySelector('.video-thumb');
+    if(!thumb) return;
+    const path = card.getAttribute('data-path');
+
+    // 停止定时器
+    const cache = _videoPreviewCache.get(path);
+    if(cache && cache.timer){
+        clearInterval(cache.timer);
+        cache.timer = null;
+    }
+
+    // 切回静态封面
+    const previewImg = thumb.querySelector('.video-preview-img');
+    const coverImg = thumb.querySelector('.video-cover');
+    const ph = thumb.querySelector('.file-thumb-ph');
+
+    if(previewImg) previewImg.style.display = 'none';
+    if(coverImg) coverImg.style.display = 'block';
+    else if(ph) ph.style.display = 'flex';
+
+    // 移开时彻底释放内存，不做磁盘缓存
+    if(releaseMemory && path){
+        _videoPreviewCache.delete(path);
+        if(_currentPreviewPath === path) _currentPreviewPath = null;
+    }
+}
+
+/* ===========================================================
+   全局拖拽监听 - 在窗口任何位置拖入文件夹都能识别
+   注: 不同 webview 后端对 file.path 的支持不一致
+       - Edge Chromium (Windows 默认) 通常可拿到 file.path
+       - 拿不到时, 提示用户用"选择目录"按钮兜底
+   =========================================================== */
+const $globalDrop = document.getElementById('globalDrop');
+let _dragDepth = 0;
+
+/* 在 window 捕获阶段阻止默认拖拽行为，防止 WebView2 弹出新窗口导航到文件 */
+window.addEventListener('dragover', e => { e.preventDefault(); if(e.dataTransfer) e.dataTransfer.dropEffect = 'copy'; }, true);
+window.addEventListener('drop', e => { e.preventDefault(); }, true);
+
+document.addEventListener('dragenter', e => {
+    if(e.dataTransfer && e.dataTransfer.types.includes('Files')){
+        _dragDepth++;
+        $globalDrop.innerHTML = `<div class="global-drop-hint"><span>松手即可添加文件夹</span></div>`;
+    }
+});
+let _lastDragX = 0, _lastDragY = 0;
+document.addEventListener('dragover', e => { e.preventDefault(); if(e.dataTransfer) e.dataTransfer.dropEffect = 'copy'; _lastDragX = e.clientX; _lastDragY = e.clientY; });
+// 阻止默认拖放行为，防止 WebView 弹出文件浏览器窗口
+document.body.ondrop = () => false;
+document.addEventListener('dragleave', e => {
+    _dragDepth = Math.max(0, _dragDepth - 1);
+    if(_dragDepth === 0) $globalDrop.innerHTML = '';
+});
+
+/* 统一处理拖拽路径 —— 左侧遍历收录 */
+async function processDroppedPaths(paths){
+    if(!paths || paths.length === 0){
+        toast('未能识别拖拽路径，请使用顶部【选择目录】按钮添加文件夹', 'error');
+        return;
+    }
+    let added = 0;
+    for(const p of paths){
+        const r = await Api.addFolder(p);
+        if(r.ok){
+            added++;
+            await App.refreshOne(p);
+        } else {
+            toast(r.msg, 'error');
+        }
+    }
+    if(added > 0){
+        toast(`成功添加 ${added} 个目录`, 'success');
+        state.folders = await Api.getFolders();
+        App.refreshCurrentView();
+    }
+}
+
+/* 统一处理拖拽路径 —— 右侧项目收录 */
+async function processDroppedProjectPaths(paths){
+    if(!paths || paths.length === 0){
+        toast('未能识别拖拽路径，请使用顶部【选择目录】按钮添加文件夹', 'error');
+        return;
+    }
+    let added = 0;
+    for(const p of paths){
+        const r = await Api.addProjectFolder(p);
+        if(r.ok) added++;
+        else toast(r.msg, 'error');
+    }
+    if(added > 0){
+        toast(`成功添加 ${added} 个项目目录`, 'success');
+        state.projectFolders = await Api.getProjectFolders();
+        App.refreshCurrentView();
+    }
+}
+
+/* Python 端拦截到 file:// 导航时回调此函数（见 main.py monkey-patch） */
+window.__onExternalDrop = function(paths){
+    // 如果在"我的目录"页面，尝试根据最后鼠标位置判断是左侧还是右侧
+    if(state.view === 'folders' && _lastDragX > 0){
+        const el = document.elementFromPoint(_lastDragX, _lastDragY);
+        if(el && el.closest('#projectPanel')){
+            processDroppedProjectPaths(paths);
+            return;
+        }
+    }
+    processDroppedPaths(paths);
+};
+
+document.addEventListener('drop', async e => {
+    e.preventDefault();
+    e.stopPropagation();
+    _dragDepth = 0;
+    $globalDrop.innerHTML = '';
+    state.dragOver = false;
+
+    const dt = e.dataTransfer;
+    if(!dt) return;
+
+    const paths = [];
+    // 方式1: file.path (pywebview / electron 扩展, 常见)
+    if(dt.files && dt.files.length){
+        for(const f of dt.files){
+            if(f.path) paths.push(f.path);
+        }
+    }
+    // 方式2: text/uri-list (部分 webview 通过 URI 提供路径)
+    if(paths.length === 0){
+        const uri = dt.getData && dt.getData('text/uri-list');
+        if(uri){
+            uri.split('\n').forEach(line => {
+                line = line.trim();
+                if(line && !line.startsWith('#')){
+                    let p = line.replace(/^file:\/\/\//,'')
+                                .replace(/^file:\/\//,'');
+                    try { p = decodeURIComponent(p); } catch(_) {}
+                    if(p) paths.push(p);
+                }
+            });
+        }
+    }
+    // 方式3: text/plain (后备, 某些环境下直接拿到本地路径字符串)
+    if(paths.length === 0){
+        const plain = dt.getData && dt.getData('text/plain');
+        if(plain){
+            plain.split('\n').forEach(line => {
+                line = line.trim();
+                if(line){
+                    let p = line.replace(/^file:\/\/\//,'')
+                                .replace(/^file:\/\//,'');
+                    try { p = decodeURIComponent(p); } catch(_) {}
+                    if(p && !paths.includes(p)) paths.push(p);
+                }
+            });
+        }
+    }
+
+    // 判断 drop 目标：临时隐藏全局覆盖层，用 elementFromPoint 获取下方真实元素
+    $globalDrop.style.display = 'none';
+    const dropTarget = document.elementFromPoint(e.clientX, e.clientY);
+    $globalDrop.style.display = '';
+    const isProjectDrop = dropTarget && dropTarget.closest('#projectPanel');
+    if(isProjectDrop){
+        await processDroppedProjectPaths(paths);
+    } else {
+        await processDroppedPaths(paths);
+    }
+});
+
+/* ===========================================================
+   图片缩略图懒加载 - 进入视口才请求 Base64
+   避免一次性把几千张图全读到内存
+   =========================================================== */
+function lazyLoadImageThumbs(){
+    if(!('IntersectionObserver' in window)) return;
+    const cards = $content.querySelectorAll('.file-card[data-img-idx]');
+    if(!cards.length) return;
+    const obs = new IntersectionObserver(async (entries) => {
+        for(const ent of entries){
+            if(!ent.isIntersecting) continue;
+            obs.unobserve(ent.target);
+            const idx = parseInt(ent.target.getAttribute('data-img-idx'), 10);
+            const file = state.isSearching ? state.searchResults.image[idx] : state.files.image[idx];
+            if(!file) continue;
+            const thumb = ent.target.querySelector('.file-thumb');
+            const data = await Api.getImageThumb(file.path);
+            if(data && thumb){
+                // 只追加图片，不要覆盖 innerHTML（会删掉收藏按钮）
+                const img = document.createElement('img');
+                img.src = data;
+                img.alt = '';
+                thumb.appendChild(img);
+                const ph = thumb.querySelector('.file-thumb-ph');
+                if(ph) ph.style.display = 'none';
+            }
+        }
+    }, { rootMargin:'200px' });
+    cards.forEach(c => obs.observe(c));
+}
+
+/* 收藏夹内图片缩略图懒加载 */
+function lazyLoadFavImageThumbs(){
+    if(!('IntersectionObserver' in window)) return;
+    const cards = $content.querySelectorAll('.file-card[data-img-idx]');
+    if(!cards.length) return;
+    const obs = new IntersectionObserver(async (entries) => {
+        for(const ent of entries){
+            if(!ent.isIntersecting) continue;
+            obs.unobserve(ent.target);
+            const idx = parseInt(ent.target.getAttribute('data-img-idx'), 10);
+            const file = state.favItems[idx];
+            if(!file) continue;
+            const thumb = ent.target.querySelector('.file-thumb');
+            const data = await Api.getImageThumb(file.path);
+            if(data && thumb){
+                // 只追加图片，不要覆盖 innerHTML（会删掉收藏按钮）
+                const img = document.createElement('img');
+                img.src = data;
+                img.alt = '';
+                thumb.appendChild(img);
+                const ph = thumb.querySelector('.file-thumb-ph');
+                if(ph) ph.style.display = 'none';
+            }
+        }
+    }, { rootMargin:'200px' });
+    cards.forEach(c => obs.observe(c));
+}
+
+/* ===========================================================
+   ESC 关闭模态框
+   =========================================================== */
+document.addEventListener('keydown', e => {
+    if(e.key === 'Escape' && state.modal && state.modal.type !== 'confirm'){
+        App.closeModal();
+    }
+    // 左右方向键支持图片/视频全局列表切换
+    if(state.modal){
+        if(state.modal.type === 'image'){
+            if(e.key === 'ArrowLeft'){ e.preventDefault(); App.prevImage(); }
+            if(e.key === 'ArrowRight'){ e.preventDefault(); App.nextImage(); }
+        }
+        if(state.modal.type === 'video'){
+            if(e.key === 'ArrowLeft'){ e.preventDefault(); App.prevVideo(); }
+            if(e.key === 'ArrowRight'){ e.preventDefault(); App.nextVideo(); }
+        }
+    }
+});
+
+/* ===========================================================
+   启动: 等待 pywebview 就绪, 然后加载数据
+   =========================================================== */
+(async () => {
+    await waitPyWebview();
+    // 获取后端版本号并显示
+    try{
+        const ver = await Api.getVersion();
+        if(ver){
+            const badge = document.getElementById('versionBadge');
+            if(badge) badge.textContent = 'v' + ver;
+        }
+    }catch(e){ /* 忽略版本号获取失败 */ }
+    await App.loadSettings();
+
+    // 启动时优先使用扫描缓存, 避免每次打开都重新遍历磁盘
+    // 只有首次启动(无缓存)或收录目录有变化时, 才自动扫描
+    console.log('[启动] 开始加载缓存...');
+    try{
+        const cached = await Api.getCachedFiles();
+        console.log('[启动] getCachedFiles 返回:', {
+            video: cached.video ? cached.video.length : 'N/A',
+            image: cached.image ? cached.image.length : 'N/A',
+            document: cached.document ? cached.document.length : 'N/A'
+        });
+        const hasCache = (cached.video && cached.video.length) ||
+                         (cached.image && cached.image.length) ||
+                         (cached.document && cached.document.length);
+        if(hasCache){
+            console.log('[启动] 缓存有效, 直接加载缓存数据');
+            state.folders = await Api.getFolders();
+            state.projectFolders = await Api.getProjectFolders();
+            console.log('[启动] folders 加载完成, 数量:', state.folders.length);
+            state.files = cached;
+            console.log('[启动] files 已赋值, view=', state.view);
+        }else{
+            console.log('[启动] 缓存为空或失效, 执行 scanAll');
+            await App.refreshAll();
+        }
+    }catch(e){
+        console.error('[启动] 缓存读取失败:', e);
+        // 缓存读取失败兜底: 正常扫描
+        await App.refreshAll();
+    }
+
+    // 启动时预加载所有收藏夹数据
+    await Promise.all([
+        App.loadFavGroups('video'),
+        App.loadFavGroups('image'),
+        App.loadFavGroups('document'),
+        App.loadFavGroups('project')
+    ]);
+})();
+</script>
+</body>
+</html>
