@@ -108,6 +108,7 @@ def main():
         "--clean",
         "--name", exe_name,
         "--add-data", "ui.html;.",
+        "--add-data", "ui_icon.png;.",
         "--collect-all", "webview",
         "--collect-all", "cv2",
         "--collect-all", "PIL",

@@ -52,7 +52,7 @@ except ImportError:
 # 软件信息
 APP_NAME = "FileAggregator"
 APP_TITLE = "文件收纳箱"
-APP_VERSION = "6.4.6"
+APP_VERSION = "6.6.0"
 
 # 数据存储位置: 用户主目录下的隐藏文件夹, 永不和软件本体混在一起
 # 这样即使用户把 exe 换个位置, 数据也不会丢
@@ -216,9 +216,9 @@ def load_config() -> Dict[str, Any]:
                         data["favorites"][cat] = []
             # 兼容旧版配置: 自动初始化 settings 字段
             if "settings" not in data or not isinstance(data["settings"], dict):
-                data["settings"] = {"sort_by": "name", "sort_order": "asc", "page_size": 20}
+                data["settings"] = {"sort_by": "name", "sort_order": "asc", "page_size": 20, "video_preview_enabled": False}
             else:
-                defaults = {"sort_by": "name", "sort_order": "asc", "page_size": 20}
+                defaults = {"sort_by": "name", "sort_order": "asc", "page_size": 20, "video_preview_enabled": False}
                 for k, v in defaults.items():
                     if k not in data["settings"]:
                         data["settings"][k] = v
@@ -872,8 +872,8 @@ class Api:
             return None
 
     def get_video_preview_frames(self, file_path: str,
-                                 frame_count: int = 32,
-                                 max_width: int = 240) -> Optional[List[str]]:
+                                 frame_count: int = 10,
+                                 max_width: int = 160) -> Optional[List[str]]:
         """
         提取视频预览帧序列，用于鼠标悬浮时连贯循环播放
         返回: base64 JPEG Data URL 列表
@@ -1148,7 +1148,10 @@ class Api:
     def get_settings(self) -> Dict[str, Any]:
         """获取用户设置 (排序方式、分页大小等)"""
         config = load_config()
-        return config.get('settings', {"sort_by": "name", "sort_order": "asc", "page_size": 20})
+        s = config.get('settings', {"sort_by": "name", "sort_order": "asc", "page_size": 20, "video_preview_enabled": False})
+        if 'video_preview_enabled' not in s:
+            s['video_preview_enabled'] = False
+        return s
 
     def save_settings(self, settings: Dict[str, Any]) -> Dict[str, Any]:
         """保存用户设置"""

@@ -527,6 +527,9 @@ button{font-family:inherit;}
 .toast.success{background:rgba(16,185,129,.95);}
 .toast.error{background:rgba(239,68,68,.95);}
 .toast.confirm{background:rgba(15,23,42,.96);border-left:4px solid var(--primary);min-width:320px;max-width:520px;flex-direction:column;align-items:flex-start;gap:8px;padding:16px 20px;}
+.toast.confirm.warning{background:rgba(69,55,10,.96);border-left-color:#f59e0b;}
+.toast.confirm.warning .toast-title{color:#fbbf24;}
+.toast.confirm.warning .toast-msg{color:#fde68a;}
 .toast.confirm.danger{background:rgba(69,10,10,.96);border-left-color:var(--danger);}
 .toast.confirm .toast-title{font-size:14px;font-weight:600;margin-bottom:2px;}
 .toast.confirm.danger .toast-title{color:var(--danger);}
@@ -539,7 +542,17 @@ button{font-family:inherit;}
 .toast-confirm-actions .btn-primary:hover{background:var(--primary-dark);}
 .toast-confirm-actions .btn-danger{background:var(--danger);color:#fff;border-color:var(--danger);}
 .toast-confirm-actions .btn-danger:hover{background:#dc2626;}
+.toast-confirm-actions .btn-warning{background:#f59e0b;color:#fff;border-color:#f59e0b;}
+.toast-confirm-actions .btn-warning:hover{background:#d97706;}
 .toast svg{width:18px;height:18px;}
+
+/* 开关样式 (类似 ElSwitch) */
+.switch-wrapper{display:inline-flex;align-items:center;gap:6px;cursor:pointer;user-select:none;}
+.switch-label{font-size:12.5px;color:var(--text);}
+.switch-track{width:36px;height:20px;border-radius:10px;background:#e2e8f0;position:relative;transition:background .2s;}
+.switch-track.active{background:var(--primary);}
+.switch-thumb{width:16px;height:16px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:transform .2s;box-shadow:0 1px 3px rgba(0,0,0,.2);}
+.switch-track.active .switch-thumb{transform:translateX(16px);}
 @keyframes slideDown{from{transform:translate(-50%,-20px);opacity:0;}to{transform:translate(-50%,0);opacity:1;}}
 
 /* 全局遮罩 - 拖拽时显示 */
@@ -578,6 +591,7 @@ button{font-family:inherit;}
 .sort-bar .sort-btn-batch{border-color:var(--primary);color:var(--primary);font-weight:600;}
 .sort-bar .sort-btn-batch:hover{background:var(--primary-light);}
 .sort-bar .sort-btn .arrow{font-size:10px;opacity:.7;}
+.sort-bar .sort-btn svg{width:14px;height:14px;}
 .sort-bar select{
     height:30px;padding:0 24px 0 10px;border:1px solid var(--border);
     border-radius:var(--radius-sm);background:#fff;font-size:12.5px;cursor:pointer;
@@ -618,7 +632,7 @@ button{font-family:inherit;}
     <aside class="sidebar">
         <div class="sidebar-header">
             <div class="brand">
-                <div class="brand-logo">⌘</div>
+                <div class="brand-logo"><img src="ui_icon.png" style="width:24px;height:24px;" alt="logo"></div>
                 <div>
                     <div class="brand-name">文件收纳箱</div>
                     <div class="brand-tag">作者：0216</div>
@@ -647,6 +661,10 @@ button{font-family:inherit;}
                 <button class="btn btn-primary" onclick="App.refreshAll()">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
                     全部刷新
+                </button>
+                <button class="btn" style="background:#f59e0b;color:#fff;border-color:#f59e0b;" onclick="App.releaseMemory()" title="释放前端内存缓存">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
+                    释放内存
                 </button>
                                 <span class="version-badge" id="versionBadge">v6.4.2</span>
             </div>
@@ -730,6 +748,7 @@ const ICONS = {
     doc:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>',
     upload:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>',
     refresh:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>',
+    zap:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>',
     trash:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>',
     location:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></svg>',
     external:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6"/><polyline points="15 3 21 3 21 9"/><line x1="10" y1="14" x2="21" y2="3"/></svg>',
@@ -802,6 +821,7 @@ function sortList(list){
         }
         if(state.sortBy === 'modified') return dir * ((a.modified || 0) - (b.modified || 0));
         if(state.sortBy === 'created') return dir * ((a.created || 0) - (b.created || 0));
+        if(state.sortBy === 'size') return dir * ((a.size || 0) - (b.size || 0));
         return 0;
     });
     return sorted;
@@ -846,7 +866,7 @@ function buildPaginationHtml(page, totalPages, total, onClickFn){
     return html;
 }
 function buildSortBarHtml(total){
-    const sortLabel = {name:'名称', modified:'修改时间', created:'创建时间'};
+    const sortLabel = {name:'名称', modified:'修改时间', created:'创建时间', size:'大小'};
     const mkBtn = (key) => {
         const active = state.sortBy === key ? 'active' : '';
         const arrow = state.sortBy === key ? (state.sortOrder === 'asc' ? '↑' : '↓') : '';
@@ -859,10 +879,18 @@ function buildSortBarHtml(total){
         <input type="text" class="search-input" id="searchInput" placeholder="输入后回车搜索内容" oninput="App.onSearchInput(this.value)" onkeydown="if(event.key==='Enter'){ event.preventDefault(); const v=this.value.trim(); if(!v) App.clearSearch(); else App.doSearch(); }"/>
         <button class="search-clear" onclick="App.clearSearch()" title="清除" style="display:none;">×</button>
     </div>`;
+    const previewSwitch = (state.view === 'video' || (state.view === 'fav_items' && state.favCategory === 'video'))
+        ? `<div class="switch-wrapper" onclick="App.toggleVideoPreview()" title="${state.videoPreviewEnabled?'关闭':'开启'}视频悬浮预览">
+            <span class="switch-label">预览</span>
+            <div class="switch-track ${state.videoPreviewEnabled?'active':''}"><div class="switch-thumb"></div></div>
+        </div>`
+        : '';
     return `<div class="sort-bar">
         ${searchHtml}
         <span class="sort-label">排序:</span>
-        ${mkBtn('name')}${mkBtn('modified')}${mkBtn('created')}
+        ${mkBtn('name')}${mkBtn('modified')}${mkBtn('created')}${mkBtn('size')}
+        <button class="sort-btn" onclick="App.refreshCurrentView()" title="刷新当前页面">${ICONS.refresh}</button>
+        ${previewSwitch}
         <button class="${batchBtnClass}" id="batchToggleBtn" onclick="App.toggleBatchMode()" style="margin-left:auto;font-weight:600;">${batchBtnText}</button>
         <span class="sort-label">共 ${total} 个</span>
     </div>`;
@@ -1026,6 +1054,8 @@ const state = reactive({
     // --- 批量操作状态 ---
     batchMode: false,           // 是否处于批量选择模式
     batchSelected: {},          // { 'path1': true, 'path2': true }
+    // --- 视频预览开关 ---
+    videoPreviewEnabled: false, // 视频悬浮预览开关（默认关闭）
 });
 
 /* ===========================================================
@@ -1106,7 +1136,7 @@ const App = {
             '【高危】永久删除确认',
             `你即将永久删除本地真实文件夹:\n\n${path}\n\n⚠ 该操作会直接删除电脑本地真实原文件，删除后不可恢复！`,
             '确认永久删除',
-            true
+            'danger'
         );
         if(!ok) return;
         const r = await Api.deleteProjectFolderReal(path);
@@ -1149,7 +1179,7 @@ const App = {
             '【高危】永久删除确认',
             `你即将永久删除本地真实文件夹:\n\n${item.path}\n\n⚠ 该操作会直接删除电脑本地真实原文件，删除后不可恢复！`,
             '确认永久删除',
-            true
+            'danger'
         );
         if(!ok) return;
         const r = await Api.deleteProjectFolderReal(item.path);
@@ -1180,6 +1210,7 @@ const App = {
                 state.sortBy = s.sort_by || 'name';
                 state.sortOrder = s.sort_order || 'asc';
                 state.pageSize = s.page_size || 20;
+                state.videoPreviewEnabled = s.video_preview_enabled || false;
             }
         }catch(e){ /* 使用默认值 */ }
     },
@@ -1188,7 +1219,8 @@ const App = {
             await Api.saveSettings({
                 sort_by: state.sortBy,
                 sort_order: state.sortOrder,
-                page_size: state.pageSize
+                page_size: state.pageSize,
+                video_preview_enabled: state.videoPreviewEnabled
             });
         }catch(e){ /* 忽略 */ }
     },
@@ -1271,6 +1303,22 @@ const App = {
             this.refreshCurrentView();
         }
     },
+    releaseMemory(){
+        // 1. 清空媒体缓存
+        mediaCache.clear();
+        // 2. 停止所有预览定时器并清空预览缓存
+        _videoPreviewCache.forEach((cache) => {
+            if(cache && cache.timer) clearInterval(cache.timer);
+        });
+        _videoPreviewCache.clear();
+        // 3. 重置预览状态变量
+        if(_videoPreviewDelayTimer){ clearTimeout(_videoPreviewDelayTimer); _videoPreviewDelayTimer = null; }
+        _currentPreviewPath = null;
+        _hoveringPath = null;
+        // 4. 重新渲染当前视图
+        this.refreshCurrentView();
+        toast('内存已释放', 'success');
+    },
     async refreshAll(){
         state.loading = true;
         try {
@@ -1312,7 +1360,7 @@ const App = {
             '【高危操作】永久删除确认',
             `你即将永久删除电脑本地的真实文件夹:\n\n${path}\n\n⚠ 该操作会直接删除电脑本地真实原文件，删除后不可恢复！\n⚠ 这不是仅移除软件记录，而是真正的文件删除！`,
             '确认永久删除',
-            true  // danger 模式：红字警告 + 红色确认按钮
+            'danger'  // danger 模式：红字警告 + 红色确认按钮
         );
         if(!ok) return;
         const r = await Api.deleteFolderPermanently(path);
@@ -1743,6 +1791,22 @@ const App = {
         if(btn) btn.textContent = state.batchMode ? '退出批量' : '批量操作';
         this.refreshCurrentView();
     },
+    async toggleVideoPreview(){
+        if(!state.videoPreviewEnabled){
+            const ok = await confirmDialog(
+                '开启视频预览确认',
+                '开启预览后可能会导致内存占用高，若出现卡顿可以点击释放内存',
+                '确认开启',
+                'warning'
+            );
+            if(!ok) return;
+            state.videoPreviewEnabled = true;
+        } else {
+            state.videoPreviewEnabled = false;
+        }
+        this.saveSettings();
+        this.refreshCurrentView();
+    },
     _toggleLock: new Set(),
     toggleSelect(path){
         if(!path || this._toggleLock.has(path)) return;
@@ -1845,7 +1909,7 @@ const App = {
             '【高危】永久删除确认',
             `你即将永久删除本地真实文件:\n\n${file.path}\n\n⚠ 该操作会直接删除电脑本地真实原文件，删除后不可恢复！`,
             '确认永久删除',
-            true
+            'danger'
         );
         if(!ok) return;
         const r = await Api.deleteFileReal(cat, file.path);
@@ -1929,7 +1993,7 @@ const App = {
             '【高危】批量永久删除确认',
             `你即将永久删除 ${paths.length} 个本地真实文件。\n\n⚠ 该操作会直接删除电脑本地真实原文件，删除后不可恢复！`,
             '确认永久删除',
-            true
+            'danger'
         );
         if(!ok) return;
         let r;
@@ -2235,7 +2299,7 @@ function renderFoldersView(){
 
     // 左栏：遍历收录
     let leftHtml = `
-        <div class="section-title" style="margin-bottom:6px;">遍历该文件夹</div>
+        <div class="section-title" style="margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;">遍历该文件夹 <button class="icon-btn" title="刷新页面" onclick="App.refreshCurrentView()">${ICONS.refresh}</button></div>
         <p style="font-size:12px;color:var(--text-sub);margin:0 0 12px;">此处会遍历目标文件夹下的所有图片、视频以及文档</p>
         <div class="${dropClass}" id="dropzone" style="margin-bottom:16px;">
             <div class="dropzone-icon">${ICONS.upload}</div>
@@ -2281,7 +2345,7 @@ function renderFoldersView(){
 
     // 右栏：项目收录
     let rightHtml = `
-        <div class="section-title" style="margin-bottom:6px;">选择文件夹（项目）</div>
+        <div class="section-title" style="margin-bottom:6px;display:flex;justify-content:space-between;align-items:center;">选择文件夹（项目） <button class="icon-btn" title="刷新页面" onclick="App.refreshCurrentView()">${ICONS.refresh}</button></div>
         <p style="font-size:12px;color:var(--text-sub);margin:0 0 12px;">主要用于管理项目文件和一些不可再拆的文件内容</p>
         <div class="${dropClass}" id="dropzone-project" style="margin-bottom:16px;">
             <div class="dropzone-icon">${ICONS.upload}</div>
@@ -2503,6 +2567,7 @@ function renderFavGroupsView(){
             <button class="btn btn-primary" onclick="App.showCreateFavGroupDialog()">
                 ${ICONS.plus} 新建收藏夹
             </button>
+            <button class="icon-btn" title="刷新页面" onclick="App.refreshCurrentView()">${ICONS.refresh}</button>
         </div>
     `;
     if(groups.length === 0){
@@ -2554,6 +2619,7 @@ function renderFavItemsView(){
             <button class="btn" onclick="App.backToFavGroups()">
                 ${ICONS.back} 返回收藏夹列表
             </button>
+            <button class="icon-btn" title="刷新页面" onclick="App.refreshCurrentView()">${ICONS.refresh}</button>
         </div>
     `;
 
@@ -2940,12 +3006,14 @@ function renderModal(){
    =========================================================== */
 function esc(s){ return String(s).replace(/\\/g,'\\\\').replace(/'/g,"\\'"); }
 
-function confirmDialog(title, message, okText, danger=false){
+function confirmDialog(title, message, okText, mode='primary'){
     return new Promise(resolve => {
         const $t = document.getElementById('toastContainer');
         const id = 'tc_' + Date.now() + Math.random();
-        const okCls = danger ? 'btn btn-danger' : 'btn btn-primary';
-        const wrapCls = danger ? 'toast confirm danger' : 'toast confirm';
+        let okCls, wrapCls;
+        if(mode === 'danger'){ okCls = 'btn btn-danger'; wrapCls = 'toast confirm danger'; }
+        else if(mode === 'warning'){ okCls = 'btn btn-warning'; wrapCls = 'toast confirm warning'; }
+        else{ okCls = 'btn btn-primary'; wrapCls = 'toast confirm'; }
         $t.insertAdjacentHTML('beforeend',
             `<div class="${wrapCls}" id="${id}">
                 <div class="toast-title">${escapeHtml(title)}</div>
@@ -3101,6 +3169,8 @@ async function setupVideoPreviews(){
 }
 
 async function startVideoHoverPreview(card, path){
+    // 预览开关关闭时不触发
+    if(!state.videoPreviewEnabled) return;
     const thumb = card.querySelector('.video-thumb');
     if(!thumb) return;
 
