@@ -54,7 +54,7 @@ except ImportError:
 # 软件信息
 APP_NAME = "FileAggregator"
 APP_TITLE = "文件收纳箱"
-APP_VERSION = "6.8.0"
+APP_VERSION = "6.9.0"
 
 # 数据存储位置: 用户主目录下的隐藏文件夹, 永不和软件本体混在一起
 # 这样即使用户把 exe 换个位置, 数据也不会丢
@@ -193,38 +193,54 @@ def _clean_cache_if_needed() -> None:
 def load_config() -> Dict[str, Any]:
     """
     加载本地 JSON 配置文件
-    出现任何异常 (文件损坏/格式错误) 时返回空配置, 不让程序崩溃
+    出现任何异常 (文件损坏/格式错误/编码错误) 时返回空配置, 不让程序崩溃
+
+    【编码兼容】Windows 记事本默认保存为 ANSI (GBK), 会导致 UTF-8 解码失败。
+    依次尝试 utf-8 → utf-8-sig → gbk → gb2312 → latin-1, 确保被记事本改过的文件也能读取。
     """
     ensure_data_dir()
     if not os.path.exists(DATA_FILE):
         return {"folders": [], "project_folders": [], "favorites": {"video": [], "image": [], "document": [], "project": []}}
+
+    # 多编码尝试读取
+    content: Optional[str] = None
+    for enc in ('utf-8', 'utf-8-sig', 'gbk', 'gb2312', 'latin-1'):
+        try:
+            with open(DATA_FILE, 'r', encoding=enc) as f:
+                content = f.read()
+            break
+        except UnicodeDecodeError:
+            continue
+
+    if content is None:
+        return {"folders": [], "project_folders": [], "favorites": {"video": [], "image": [], "document": [], "project": []}}
+
     try:
-        with open(DATA_FILE, 'r', encoding='utf-8') as f:
-            data = json.load(f)
-            # 兼容性校验: 确保结构合法
-            if not isinstance(data, dict):
-                return {"folders": [], "project_folders": [], "favorites": {"video": [], "image": [], "document": [], "project": []}}
-            if "folders" not in data or not isinstance(data["folders"], list):
-                data["folders"] = []
-            # 兼容旧版配置: 自动初始化 project_folders 字段
-            if "project_folders" not in data or not isinstance(data["project_folders"], list):
-                data["project_folders"] = []
-            # 兼容旧版配置: 自动初始化 favorites 字段
-            if "favorites" not in data or not isinstance(data["favorites"], dict):
-                data["favorites"] = {"video": [], "image": [], "document": [], "project": []}
-            else:
-                for cat in ["video", "image", "document", "project"]:
-                    if cat not in data["favorites"] or not isinstance(data["favorites"][cat], list):
-                        data["favorites"][cat] = []
-            # 兼容旧版配置: 自动初始化 settings 字段
-            if "settings" not in data or not isinstance(data["settings"], dict):
-                data["settings"] = {"sort_by": "name", "sort_order": "asc", "page_size": 20, "video_preview_enabled": False}
-            else:
-                defaults = {"sort_by": "name", "sort_order": "asc", "page_size": 20, "video_preview_enabled": False}
-                for k, v in defaults.items():
-                    if k not in data["settings"]:
-                        data["settings"][k] = v
-            return data
+        data = json.loads(content)
+        # 兼容性校验: 确保结构合法
+        if not isinstance(data, dict):
+            return {"folders": [], "project_folders": [], "favorites": {"video": [], "image": [], "document": [], "project": []}}
+        if "folders" not in data or not isinstance(data["folders"], list):
+            data["folders"] = []
+        # 兼容旧版配置: 自动初始化 project_folders 字段
+        if "project_folders" not in data or not isinstance(data["project_folders"], list):
+            data["project_folders"] = []
+        # 兼容旧版配置: 自动初始化 favorites 字段
+        if "favorites" not in data or not isinstance(data["favorites"], dict):
+            data["favorites"] = {"video": [], "image": [], "document": [], "project": []}
+        else:
+            for cat in ["video", "image", "document", "project"]:
+                if cat not in data["favorites"] or not isinstance(data["favorites"][cat], list):
+                    data["favorites"][cat] = []
+        # 兼容旧版配置: 自动初始化 settings 字段
+        if "settings" not in data or not isinstance(data["settings"], dict):
+            data["settings"] = {"sort_by": "name", "sort_order": "asc", "page_size": 20, "video_preview_enabled": False}
+        else:
+            defaults = {"sort_by": "name", "sort_order": "asc", "page_size": 20, "video_preview_enabled": False}
+            for k, v in defaults.items():
+                if k not in data["settings"]:
+                    data["settings"][k] = v
+        return data
     except (json.JSONDecodeError, OSError):
         return {"folders": [], "project_folders": [], "favorites": {"video": [], "image": [], "document": [], "project": []}}
 
@@ -1613,6 +1629,91 @@ class Api:
             result[cat].sort(key=lambda x: x.get('modified', 0), reverse=True)
 
         return result
+
+    # --------------------------------------------------------
+    # 4.12 清理空文件 (0 字节文件)
+    # --------------------------------------------------------
+
+    def get_empty_files(self) -> Dict[str, Any]:
+        """
+        扫描所有遍历目录，收集大小为 0 字节的空文件
+        返回: {ok: bool, count: int, files: [{name, path, folder}, ...]}
+        """
+        config = load_config()
+        folders: List[str] = config.get('folders', [])
+        empty_files: List[Dict[str, str]] = []
+
+        for folder in folders:
+            if not os.path.isdir(folder):
+                continue
+            try:
+                for root, _dirs, files in os.walk(folder):
+                    for name in files:
+                        full_path = os.path.join(root, name)
+                        try:
+                            stat = os.stat(full_path)
+                            if stat.st_size == 0:
+                                empty_files.append({
+                                    'name': name,
+                                    'path': full_path,
+                                    'folder': folder
+                                })
+                        except OSError:
+                            continue
+            except (PermissionError, OSError):
+                continue
+
+        return {'ok': True, 'count': len(empty_files), 'files': empty_files}
+
+    def delete_empty_files(self, file_paths: List[str]) -> Dict[str, Any]:
+        """
+        删除指定的空文件，并同步清理 scan_cache 和 favorites 中的引用
+        返回: {ok: bool, msg: str, deleted: [...], failed: [...]}
+        """
+        if not file_paths:
+            return {'ok': True, 'msg': '没有需要处理的文件', 'deleted': [], 'failed': []}
+
+        deleted: List[str] = []
+        failed: List[Dict[str, str]] = []
+
+        for path in file_paths:
+            try:
+                os.remove(path)
+                deleted.append(path)
+            except Exception as e:
+                failed.append({'path': path, 'reason': str(e)})
+
+        # 同步清理 scan_cache
+        config = load_config()
+        scan_cache = config.get('scan_cache', {})
+        for folder_data in scan_cache.values():
+            for cat in ['video', 'image', 'document']:
+                cat_list = folder_data.get(cat, [])
+                if cat_list:
+                    folder_data[cat] = [
+                        item for item in cat_list
+                        if item.get('path') not in deleted
+                    ]
+
+        # 同步清理 favorites
+        favorites = config.get('favorites', {})
+        for cat in ['video', 'image', 'document', 'project']:
+            groups = favorites.get(cat, [])
+            for g in groups:
+                items = g.get('items', [])
+                if items:
+                    g['items'] = [p for p in items if p not in deleted]
+
+        config['scan_cache'] = scan_cache
+        config['favorites'] = favorites
+        save_config(config)
+
+        return {
+            'ok': len(failed) == 0,
+            'msg': f'删除完成: 成功 {len(deleted)} 个, 失败 {len(failed)} 个',
+            'deleted': deleted,
+            'failed': failed
+        }
 
 
 # ============================================================

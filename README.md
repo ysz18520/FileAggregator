@@ -184,6 +184,10 @@ C:\Users\<你的用户名>\.file_aggregator\config.json
 - **右侧拖拽修复**：在 `dragover` 中记录最后鼠标位置，`window.__onExternalDrop` 据此判断 drop 目标是否在 `#projectPanel` 内，正确走项目收录逻辑，避免与左侧遍历目录冲突
 - **批量 checkbox 同步修复**：图片区域 `.file-card` 缺少 `data-path` 导致 checkbox 视觉状态不同步，在 `toggleSelect` 中增加回退到 checkbox 自身 `data-path` 的逻辑
 
+### v6.9.0 — 空文件清理 + 编码兼容修复
+- **一键清理空文件**：顶部操作栏新增绿色"清理空文件"按钮，扫描所有遍历目录下大小为 0 字节的空文件，弹出绿色确认框预览文件列表（前 10 个），确认后批量删除并自动同步清理 scan_cache 和收藏夹引用
+- **配置文件编码兼容**：`load_config()` 新增多编码容错（utf-8 → utf-8-sig → gbk → gb2312 → latin-1），解决 Windows 记事本保存 config.json 为 ANSI 编码后程序无法启动的 UnicodeDecodeError 问题
+
 ### v6.8.0 — 稳定里程碑（单实例限制 + 项目搜索修复）
 - **单实例限制**：通过 Windows 命名互斥锁实现，重复点击 exe 会激活已有窗口并置顶，不再打开新实例
 - **项目模块搜索修复**：全局搜索现支持项目文件夹名称匹配，搜索状态下项目专区正确显示筛选结果

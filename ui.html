@@ -531,6 +531,9 @@ button{font-family:inherit;}
 .toast.confirm.warning .toast-title{color:#fbbf24;}
 .toast.confirm.warning .toast-msg{color:#fde68a;}
 .toast.confirm.danger{background:rgba(69,10,10,.96);border-left-color:var(--danger);}
+.toast.confirm.success{background:rgba(10,69,35,.96);border-left-color:var(--success);}
+.toast.confirm.success .toast-title{color:#34d399;}
+.toast.confirm.success .toast-msg{color:#a7f3d0;}
 .toast.confirm .toast-title{font-size:14px;font-weight:600;margin-bottom:2px;}
 .toast.confirm.danger .toast-title{color:var(--danger);}
 .toast.confirm .toast-msg{font-size:13px;color:#e2e8f0;line-height:1.5;white-space:pre-wrap;}
@@ -662,11 +665,15 @@ button{font-family:inherit;}
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
                     全部刷新
                 </button>
+                <button class="btn" style="background:var(--success);color:#fff;border-color:var(--success);" onclick="App.cleanEmptyFiles()" title="扫描所有遍历目录，删除大小为0字节的空文件">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 6h18"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6"/><path d="M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    清理空文件
+                </button>
                 <button class="btn" style="background:#f59e0b;color:#fff;border-color:#f59e0b;" onclick="App.releaseMemory()" title="释放前端内存缓存">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg>
                     释放内存
                 </button>
-                                <span class="version-badge" id="versionBadge">v6.4.2</span>
+                                <span class="version-badge" id="versionBadge">v6.9.0</span>
             </div>
         </header>
         <section class="content" id="content"></section>
@@ -1023,6 +1030,8 @@ const Api = (() => {
         batchAddFavorites: (cat, gid, paths) => pick('batch_add_favorites')(cat, gid, paths),
         batchRemoveFavorites: (cat, paths) => pick('batch_remove_favorites')(cat, paths),
         searchFiles: (kw) => pick('search_files')(kw),
+        getEmptyFiles: () => pick('get_empty_files')(),
+        deleteEmptyFiles: (paths) => pick('delete_empty_files')(paths),
     };
 })();
 
@@ -1347,6 +1356,55 @@ const App = {
         // 4. 重新渲染当前视图
         this.refreshCurrentView();
         toast('内存已释放', 'success');
+    },
+    async cleanEmptyFiles(){
+        try {
+            const preview = await Api.getEmptyFiles();
+            if(!preview.ok){
+                toast('扫描空文件失败', 'error');
+                return;
+            }
+            const count = preview.count;
+            const files = preview.files;
+            if(count === 0){
+                toast('未找到大小为 0 字节的空文件', 'success');
+                return;
+            }
+            // 显示前 10 个文件路径作为预览
+            const previewList = files.slice(0, 10).map(f => '  · ' + f.name).join('\n');
+            const moreHint = count > 10 ? `\n  ... 还有 ${count - 10} 个` : '';
+            const ok = await confirmDialog(
+                '清理空文件确认',
+                `即将清除所有遍历目录下内容为空的文件（共 ${count} 个）\n\n${previewList}${moreHint}\n\n此操作不可恢复，确认清除？`,
+                '确认清除',
+                'success'
+            );
+            if(!ok) return;
+            const paths = files.map(f => f.path);
+            const r = await Api.deleteEmptyFiles(paths);
+            toast(r.msg, r.ok ? 'success' : 'error');
+            if(r.ok && r.deleted.length > 0){
+                // 从当前状态中移除已删除的文件
+                for(const cat of ['video', 'image', 'document']){
+                    const deletedSet = new Set(r.deleted);
+                    state.files[cat] = state.files[cat].filter(f => !deletedSet.has(f.path));
+                    if(state.isSearching){
+                        state.searchResults[cat] = state.searchResults[cat].filter(f => !deletedSet.has(f.path));
+                    }
+                }
+                // 同步清理收藏夹状态
+                for(const cat of ['video', 'image', 'document', 'project']){
+                    const groups = state.favorites[cat] || [];
+                    for(const g of groups){
+                        const deletedSet = new Set(r.deleted);
+                        g.items = (g.items || []).filter(p => !deletedSet.has(p));
+                    }
+                }
+                this.refreshCurrentView();
+            }
+        } catch(e){
+            toast('清理空文件出错: ' + e, 'error');
+        }
     },
     async refreshAll(){
         state.loading = true;
@@ -3160,6 +3218,7 @@ function confirmDialog(title, message, okText, mode='primary'){
         let okCls, wrapCls;
         if(mode === 'danger'){ okCls = 'btn btn-danger'; wrapCls = 'toast confirm danger'; }
         else if(mode === 'warning'){ okCls = 'btn btn-warning'; wrapCls = 'toast confirm warning'; }
+        else if(mode === 'success'){ okCls = 'btn btn-primary'; wrapCls = 'toast confirm success'; }
         else{ okCls = 'btn btn-primary'; wrapCls = 'toast confirm'; }
         $t.insertAdjacentHTML('beforeend',
             `<div class="${wrapCls}" id="${id}">

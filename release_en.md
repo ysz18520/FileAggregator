@@ -1,6 +1,11 @@
-## FileAggregator v6.8.0
+## FileAggregator v6.9.0
 
 A 100% offline desktop file aggregator for Windows. Drop a folder in, and your videos, images, and documents are automatically sorted — without ever copying, moving, or modifying your originals.
+
+### What's New in v6.9.0
+
+- **Clean Empty Files** — New green toolbar button scans all indexed folders for 0-byte files, shows a preview list (first 10) in a green confirmation toast, and deletes them in one go. Automatically syncs scan_cache and favorite references.
+- **Config Encoding Resilience** — `load_config()` now tries 5 encodings (utf-8 → utf-8-sig → gbk → gb2312 → latin-1), fixing `UnicodeDecodeError` when Windows Notepad saves `config.json` as ANSI.
 
 ### What's New in v6.8.0
 
@@ -31,4 +36,4 @@ A 100% offline desktop file aggregator for Windows. Drop a folder in, and your v
 
 ### Download
 
-Extract the entire `dist` folder and run `文件收纳箱v6.8.exe`. No Python or additional dependencies required.
+Extract the entire `dist` folder and run `文件收纳箱v6.9.exe`. No Python or additional dependencies required.
