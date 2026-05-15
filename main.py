@@ -724,11 +724,13 @@ class Api:
     # --------------------------------------------------------
 
     def read_image_base64(self, file_path: str,
-                          max_bytes: int = 30 * 1024 * 1024) -> Optional[str]:
+                          max_bytes: int = 30 * 1024 * 1024,
+                          max_dimension: int = 1200) -> Optional[str]:
         """
         读取图片文件并转为 Base64 Data URL
         让前端 <img> 标签可直接渲染 (避开 file:// 协议在某些 webview 上的限制)
         max_bytes 限制最大 30MB, 防止超大图把内存撑爆
+        max_dimension 限制最大边长, 有 Pillow 时自动缩放, 避免超大分辨率图片撑爆内存
         """
         try:
             if not os.path.exists(file_path):
@@ -738,6 +740,27 @@ class Api:
                 return None
             ext = os.path.splitext(file_path)[1].lower()
             mime = mimetypes.types_map.get(ext, 'image/jpeg')
+
+            # 有 Pillow 时对大图先做尺寸限制, 避免前端内存爆炸
+            if HAS_PIL and max_dimension > 0:
+                try:
+                    img = Image.open(file_path)
+                    img = img.convert('RGB')
+                    w, h = img.size
+                    if max(w, h) > max_dimension:
+                        ratio = max_dimension / max(w, h)
+                        new_size = (int(w * ratio), int(h * ratio))
+                        img = img.resize(new_size, Image.LANCZOS)
+                        from io import BytesIO
+                        buf = BytesIO()
+                        fmt = 'PNG' if ext == '.png' else 'JPEG'
+                        img.save(buf, format=fmt, quality=85, optimize=True)
+                        data = buf.getvalue()
+                        b64 = base64.b64encode(data).decode('ascii')
+                        return f"data:{mime};base64,{b64}"
+                except Exception:
+                    pass  # 降级到原图读取
+
             with open(file_path, 'rb') as f:
                 data = f.read()
             b64 = base64.b64encode(data).decode('ascii')
@@ -746,8 +769,8 @@ class Api:
             return None
 
     def get_image_thumb(self, file_path: str,
-                        max_size: int = 400,
-                        quality: int = 80) -> Optional[str]:
+                        max_size: int = 250,
+                        quality: int = 70) -> Optional[str]:
         """
         生成图片缩略图并返回 base64 JPEG Data URL
         优先读磁盘缓存，miss 后用 Pillow 缩放后写入缓存
@@ -1166,14 +1189,15 @@ class Api:
 
     def pick_folder(self) -> Dict[str, Any]:
         """
-        弹出系统的文件夹选择对话框, 仅返回路径不自动添加
+        弹出系统的文件夹选择对话框, 支持多选, 仅返回路径不自动添加
         由前端决定添加到遍历目录还是项目目录
         """
         if not self._window:
             return {'ok': False, 'msg': '窗口未就绪'}
         try:
             result = self._window.create_file_dialog(
-                webview.FOLDER_DIALOG  # 文件夹选择模式
+                webview.FOLDER_DIALOG,  # 文件夹选择模式
+                allow_multiple=True     # 允许多选
             )
         except Exception as e:
             return {'ok': False, 'msg': f'对话框打开失败: {e}'}
@@ -1181,9 +1205,13 @@ class Api:
         if not result:
             return {'ok': False, 'msg': '已取消选择'}
 
-        # result 是一个 tuple 或 list, 取第一个
-        folder = result[0] if isinstance(result, (list, tuple)) else result
-        return {'ok': True, 'path': folder}
+        # result 是 tuple/list, 可能包含多个路径
+        if isinstance(result, (list, tuple)):
+            paths = [p for p in result if p]
+            if not paths:
+                return {'ok': False, 'msg': '已取消选择'}
+            return {'ok': True, 'paths': paths}
+        return {'ok': True, 'paths': [result]}
 
     def pick_target_folder(self) -> Dict[str, Any]:
         """

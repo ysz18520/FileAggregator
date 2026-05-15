@@ -1249,12 +1249,20 @@ const App = {
     /* -------- 文件夹: 选择 / 添加 / 移除 / 刷新 -------- */
     async pickFolder(){
         const r = await Api.pickFolder();
-        if(r && r.ok){
-            const addR = await Api.addFolder(r.path);
-            toast(addR.msg, addR.ok ? 'success' : 'error');
-            if(addR.ok){
+        if(r && r.ok && r.paths && r.paths.length){
+            let added = 0;
+            for(const p of r.paths){
+                const addR = await Api.addFolder(p);
+                if(addR.ok){
+                    added++;
+                    await this.refreshOne(p);
+                } else {
+                    toast(addR.msg, 'error');
+                }
+            }
+            if(added > 0){
+                toast(`成功添加 ${added} 个目录`, 'success');
                 state.folders = await Api.getFolders();
-                await this.refreshOne(r.path);
                 this.refreshCurrentView();
             }
         } else if(r && r.msg && r.msg !== '已取消选择'){
@@ -1263,10 +1271,18 @@ const App = {
     },
     async pickProjectFolder(){
         const r = await Api.pickFolder();
-        if(r && r.ok){
-            const addR = await Api.addProjectFolder(r.path);
-            toast(addR.msg, addR.ok ? 'success' : 'error');
-            if(addR.ok){
+        if(r && r.ok && r.paths && r.paths.length){
+            let added = 0;
+            for(const p of r.paths){
+                const addR = await Api.addProjectFolder(p);
+                if(addR.ok){
+                    added++;
+                } else {
+                    toast(addR.msg, 'error');
+                }
+            }
+            if(added > 0){
+                toast(`成功添加 ${added} 个项目目录`, 'success');
                 state.projectFolders = await Api.getProjectFolders();
                 await this.loadProjects();
                 this.refreshCurrentView();
