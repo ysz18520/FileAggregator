@@ -1016,8 +1016,10 @@ const Api = (() => {
         // --- 文件删除 / 搜索 / 批量操作 ---
         deleteFileMap: (cat, path) => pick('delete_file_map')(path, cat),
         deleteFileReal: (cat, path) => pick('delete_file_real')(path, cat),
+        renameFile: (path, newName) => pick('rename_file')(path, newName),
         batchDeleteMap: (cat, paths) => pick('batch_delete_map')(paths, cat),
         batchDeleteReal: (cat, paths) => pick('batch_delete_real')(paths, cat),
+        batchRenameFiles: (paths, baseName) => pick('batch_rename_files')(paths, baseName),
         batchAddFavorites: (cat, gid, paths) => pick('batch_add_favorites')(cat, gid, paths),
         batchRemoveFavorites: (cat, paths) => pick('batch_remove_favorites')(cat, paths),
         searchFiles: (kw) => pick('search_files')(kw),
@@ -1791,6 +1793,15 @@ const App = {
         if(btn) btn.textContent = state.batchMode ? '退出批量' : '批量操作';
         this.refreshCurrentView();
     },
+    exitBatchMode(){
+        if(!state.batchMode) return;
+        state.batchMode = false;
+        state.batchSelected = {};
+        const btn = document.getElementById('batchToggleBtn');
+        if(btn) btn.textContent = '批量操作';
+        this.updateBatchUI();
+        this.refreshCurrentView();
+    },
     async toggleVideoPreview(){
         if(!state.videoPreviewEnabled){
             const ok = await confirmDialog(
@@ -1878,6 +1889,42 @@ const App = {
         else if(view === 'fav_items') renderFavItemsView();
         else if(view === 'folders') renderFoldersView();
         else if(view === 'fav_groups') renderFavGroupsView();
+    },
+
+    /* -------- 文件重命名 -------- */
+    async renameFile(cat, idx, isFav){
+        let list;
+        if(isFav) list = state.favItems;
+        else if(state.isSearching) list = state.searchResults[cat];
+        else list = state.files[cat];
+        const file = list && list[idx];
+        if(!file) return;
+        const newName = await promptDialog('重命名文件', '请输入新文件名：', file.name);
+        if(!newName || newName.trim() === '' || newName.trim() === file.name) return;
+        const r = await Api.renameFile(file.path, newName.trim());
+        toast(r.msg, r.ok ? 'success' : 'error');
+        if(r.ok){
+            const oldPath = file.path;
+            const newPath = r.new_path;
+            const newFileName = newPath.split(/[\\\\/]/).pop();
+            // 同步更新所有可能包含该文件的列表
+            const allLists = [state.files[cat], state.searchResults[cat], state.favItems];
+            allLists.forEach(lst => {
+                if(!lst) return;
+                lst.forEach(f => {
+                    if(f.path === oldPath){
+                        f.path = newPath;
+                        f.name = newFileName;
+                    }
+                });
+            });
+            // 同步更新批量选中状态
+            if(state.batchSelected[oldPath]){
+                delete state.batchSelected[oldPath];
+                state.batchSelected[newPath] = true;
+            }
+            this.refreshCurrentView();
+        }
     },
 
     /* -------- 文件删除 -------- */
@@ -1983,6 +2030,7 @@ const App = {
             await this.loadFavGroups(cat);
             this.updateBatchUI();
             this.refreshCurrentView();
+            this.exitBatchMode();
         }
     },
     async batchDeleteReal(){
@@ -2013,6 +2061,40 @@ const App = {
             await this.loadFavGroups(cat);
             this.updateBatchUI();
             this.refreshCurrentView();
+            this.exitBatchMode();
+        }
+    },
+    async batchRename(){
+        const paths = this.getSelectedPaths();
+        if(!paths.length) return toast('请先选择文件', 'error');
+        const baseName = await promptDialog('批量重命名', `已选择 ${paths.length} 个文件，请输入基础文件名：`, '');
+        if(!baseName || baseName.trim() === '') return;
+        const r = await Api.batchRenameFiles(paths, baseName.trim());
+        toast(r.msg, r.ok ? 'success' : 'error');
+        if(r.ok){
+            const cat = state.view === 'fav_items' ? state.favCategory : state.view;
+            // 同步更新所有列表中的路径和名称
+            const allLists = [state.files[cat], state.searchResults[cat], state.favItems];
+            r.moved.forEach(m => {
+                const newFileName = m.new.split(/[\\\\/]/).pop();
+                allLists.forEach(lst => {
+                    if(!lst) return;
+                    lst.forEach(f => {
+                        if(f.path === m.old){
+                            f.path = m.new;
+                            f.name = newFileName;
+                        }
+                    });
+                });
+                // 同步更新批量选中状态
+                if(state.batchSelected[m.old]){
+                    delete state.batchSelected[m.old];
+                    state.batchSelected[m.new] = true;
+                }
+            });
+            this.updateBatchUI();
+            this.refreshCurrentView();
+            this.exitBatchMode();
         }
     },
     async batchAddFavorites(){
@@ -2047,6 +2129,7 @@ const App = {
             await this.loadFavGroups(cat);
             this.updateBatchUI();
             this.refreshCurrentView();
+            this.exitBatchMode();
         }
     },
     async batchRemoveFavorites(){
@@ -2067,6 +2150,7 @@ const App = {
             await this.loadFavItems(cat, state.favGroupId);
             await this.loadFavGroups(cat);
             this.updateBatchUI();
+            this.exitBatchMode();
         }
     },
 
@@ -2423,6 +2507,7 @@ function renderProjectView(){
                 <div class="folder-card-actions" style="${state.batchMode?'display:none;':''}">
                     <button class="icon-btn" title="刷新" onclick="event.stopPropagation();App.loadProjects();App.refreshCurrentView();">${ICONS.refresh}</button>
                     <button class="icon-btn" title="打开所在位置" onclick="event.stopPropagation();App.showProjectLocByIdx(${actualIdx})">${ICONS.location}</button>
+                    <button class="icon-btn" title="重命名" onclick="event.stopPropagation();App.renameFile('project',${actualIdx})">${ICONS.edit}</button>
                     <button class="icon-btn btn-remove" title="从软件中移除" onclick="event.stopPropagation();App.deleteProjectMap(${actualIdx})">${ICONS.trash}</button>
                     <button class="icon-btn btn-perm-delete" title="【高危】永久删除本地真实文件夹" onclick="event.stopPropagation();App.deleteProjectReal(${actualIdx})">${ICONS.trash}</button>
                     <button class="icon-btn ${f.is_favorited?'fav-star-active':''}" title="${f.is_favorited?'已收藏':'收藏'}" onclick="event.stopPropagation();App.showProjectFavDialogByIdx(${actualIdx})">${f.is_favorited?ICONS.starFilled:ICONS.star}</button>
@@ -2453,6 +2538,7 @@ function renderVideoView(){
             <div class="file-card video-card" data-video-idx="${actualIdx}" data-path="${escapeHtml(f.path)}" onclick="App.clickFileByIdx('video',${actualIdx})">
                 <div class="file-checkbox ${state.batchSelected[f.path]?'checked':''}" data-path="${escapeHtml(f.path)}" onclick="event.stopPropagation();App.toggleSelect(this.dataset.path)" style="${state.batchMode||state.batchSelected[f.path]?'opacity:1;':''}">${state.batchSelected[f.path]?ICONS.checkboxChecked:ICONS.checkbox}</div>
                 <div class="file-card-actions" style="${state.batchMode?'display:none;':''}">
+                    <button class="icon-btn" title="重命名" onclick="event.stopPropagation();App.renameFile('video',${actualIdx})">${ICONS.edit}</button>
                     <button class="icon-btn btn-remove" title="从软件中移除" onclick="event.stopPropagation();App.deleteFileMap('video',${actualIdx})">${ICONS.trash}</button>
                     <button class="icon-btn btn-perm-delete" title="永久删除" onclick="event.stopPropagation();App.deleteFileReal('video',${actualIdx})">${ICONS.trash}</button>
                     <button class="icon-btn ${f.is_favorited?'fav-star-active':''}" title="${f.is_favorited?'已收藏':'收藏'}" onclick="event.stopPropagation();App.showFavDialogByIdx('video',${actualIdx})">${f.is_favorited?ICONS.starFilled:ICONS.star}</button>
@@ -2495,6 +2581,7 @@ function renderImageView(){
             <div class="file-card" data-img-idx="${actualIdx}" onclick="App.clickFileByIdx('image',${actualIdx})">
                 <div class="file-checkbox ${state.batchSelected[f.path]?'checked':''}" data-path="${escapeHtml(f.path)}" onclick="event.stopPropagation();App.toggleSelect(this.dataset.path)" style="${state.batchMode||state.batchSelected[f.path]?'opacity:1;':''}">${state.batchSelected[f.path]?ICONS.checkboxChecked:ICONS.checkbox}</div>
                 <div class="file-card-actions" style="${state.batchMode?'display:none;':''}">
+                    <button class="icon-btn" title="重命名" onclick="event.stopPropagation();App.renameFile('image',${actualIdx})">${ICONS.edit}</button>
                     <button class="icon-btn btn-remove" title="从软件中移除" onclick="event.stopPropagation();App.deleteFileMap('image',${actualIdx})">${ICONS.trash}</button>
                     <button class="icon-btn btn-perm-delete" title="永久删除" onclick="event.stopPropagation();App.deleteFileReal('image',${actualIdx})">${ICONS.trash}</button>
                     <button class="icon-btn ${f.is_favorited?'fav-star-active':''}" title="${f.is_favorited?'已收藏':'收藏'}" onclick="event.stopPropagation();App.showFavDialogByIdx('image',${actualIdx})">${f.is_favorited?ICONS.starFilled:ICONS.star}</button>
@@ -2537,6 +2624,7 @@ function renderDocumentView(){
                 <div class="file-checkbox ${state.batchSelected[f.path]?'checked':''}" data-path="${escapeHtml(f.path)}" onclick="event.stopPropagation();App.toggleSelect(this.dataset.path)" style="${state.batchMode||state.batchSelected[f.path]?'opacity:1;':''}">${state.batchSelected[f.path]?ICONS.checkboxChecked:ICONS.checkbox}</div>
                 <div class="file-card-actions" style="${state.batchMode?'display:none;':''}">
                     <button class="icon-btn btn-loc" title="打开所在位置" onclick="event.stopPropagation();App.showLocByIdx('document',${actualIdx})">${ICONS.location}</button>
+                    <button class="icon-btn" title="重命名" onclick="event.stopPropagation();App.renameFile('document',${actualIdx})">${ICONS.edit}</button>
                     <button class="icon-btn btn-remove" title="从软件中移除" onclick="event.stopPropagation();App.deleteFileMap('document',${actualIdx})">${ICONS.trash}</button>
                     <button class="icon-btn btn-perm-delete" title="永久删除" onclick="event.stopPropagation();App.deleteFileReal('document',${actualIdx})">${ICONS.trash}</button>
                     <button class="icon-btn" title="${f.is_favorited?'已收藏':'收藏'}" style="${f.is_favorited?'color:#fbbf24;':''}" onclick="event.stopPropagation();App.showFavDialogByIdx('document',${actualIdx})">${f.is_favorited?ICONS.starFilled:ICONS.star}</button>
@@ -2648,6 +2736,7 @@ function renderFavItemsView(){
                 <div class="file-card video-card" data-video-idx="${actualIdx}" data-path="${escapeHtml(f.path)}" onclick="App.clickFavFileByIdx(${actualIdx})">
                     <div class="file-checkbox ${state.batchSelected[f.path]?'checked':''}" data-path="${escapeHtml(f.path)}" onclick="event.stopPropagation();App.toggleSelect(this.dataset.path)" style="${state.batchMode||state.batchSelected[f.path]?'opacity:1;':''}">${state.batchSelected[f.path]?ICONS.checkboxChecked:ICONS.checkbox}</div>
                     <div class="file-card-actions" style="${state.batchMode?'display:none;':''}">
+                        <button class="icon-btn" title="重命名" onclick="event.stopPropagation();App.renameFile('video',${actualIdx},true)">${ICONS.edit}</button>
                         <button class="icon-btn btn-remove" title="从软件中移除" onclick="event.stopPropagation();App.deleteFileMap('video',${actualIdx},true)">${ICONS.trash}</button>
                         <button class="icon-btn btn-perm-delete" title="永久删除" onclick="event.stopPropagation();App.deleteFileReal('video',${actualIdx},true)">${ICONS.trash}</button>
                         <button class="icon-btn fav-unfav-btn" title="取消收藏" onclick="event.stopPropagation();App.unfavByIdx(${actualIdx})">${ICONS.starFilled}</button>
@@ -2678,6 +2767,7 @@ function renderFavItemsView(){
                 <div class="file-card" data-img-idx="${actualIdx}" onclick="App.clickFavFileByIdx(${actualIdx})">
                     <div class="file-checkbox ${state.batchSelected[f.path]?'checked':''}" data-path="${escapeHtml(f.path)}" onclick="event.stopPropagation();App.toggleSelect(this.dataset.path)" style="${state.batchMode||state.batchSelected[f.path]?'opacity:1;':''}">${state.batchSelected[f.path]?ICONS.checkboxChecked:ICONS.checkbox}</div>
                     <div class="file-card-actions" style="${state.batchMode?'display:none;':''}">
+                        <button class="icon-btn" title="重命名" onclick="event.stopPropagation();App.renameFile('image',${actualIdx},true)">${ICONS.edit}</button>
                         <button class="icon-btn btn-remove" title="从软件中移除" onclick="event.stopPropagation();App.deleteFileMap('image',${actualIdx},true)">${ICONS.trash}</button>
                         <button class="icon-btn btn-perm-delete" title="永久删除" onclick="event.stopPropagation();App.deleteFileReal('image',${actualIdx},true)">${ICONS.trash}</button>
                         <button class="icon-btn fav-unfav-btn" title="取消收藏" onclick="event.stopPropagation();App.unfavByIdx(${actualIdx})">${ICONS.starFilled}</button>
@@ -2714,6 +2804,7 @@ function renderFavItemsView(){
                         <div class="folder-card-path">${formatSize(f.size)} · ${formatTime(f.modified)}</div>
                     </div>
                     <div class="folder-card-actions" style="${state.batchMode?'display:none;':''}">
+                        <button class="icon-btn" title="重命名" onclick="event.stopPropagation();App.renameFile('project',${actualIdx},true)">${ICONS.edit}</button>
                         <button class="icon-btn btn-remove" title="从软件中移除" onclick="event.stopPropagation();App.deleteFileMap('project',${actualIdx},true)">${ICONS.trash}</button>
                         <button class="icon-btn btn-perm-delete" title="永久删除" onclick="event.stopPropagation();App.deleteFileReal('project',${actualIdx},true)">${ICONS.trash}</button>
                         <button class="icon-btn fav-unfav-btn" title="取消收藏" onclick="event.stopPropagation();App.unfavByIdx(${actualIdx})">${ICONS.starFilled}</button>
@@ -2733,6 +2824,7 @@ function renderFavItemsView(){
                 <div class="doc-card" onclick="App.clickFavFileByIdx(${actualIdx})">
                     <div class="file-checkbox ${state.batchSelected[f.path]?'checked':''}" data-path="${escapeHtml(f.path)}" onclick="event.stopPropagation();App.toggleSelect(this.dataset.path)" style="${state.batchMode||state.batchSelected[f.path]?'opacity:1;':''}">${state.batchSelected[f.path]?ICONS.checkboxChecked:ICONS.checkbox}</div>
                     <div class="file-card-actions" style="${state.batchMode?'display:none;':''}">
+                        <button class="icon-btn" title="重命名" onclick="event.stopPropagation();App.renameFile('document',${actualIdx},true)">${ICONS.edit}</button>
                         <button class="icon-btn btn-remove" title="从软件中移除" onclick="event.stopPropagation();App.deleteFileMap('document',${actualIdx},true)">${ICONS.trash}</button>
                         <button class="icon-btn btn-perm-delete" title="永久删除" onclick="event.stopPropagation();App.deleteFileReal('document',${actualIdx},true)">${ICONS.trash}</button>
                         <button class="icon-btn fav-unfav-btn" title="取消收藏" onclick="event.stopPropagation();App.unfavByIdx(${actualIdx})">${ICONS.starFilled}</button>
@@ -2786,6 +2878,7 @@ function renderBatchBar(){
         ${showUnfav ? `<button class="btn btn-warning" onclick="App.batchRemoveFavorites()">${ICONS.starFilled} 取消</button>` : ''}
         <button class="btn btn-secondary" onclick="App.batchDeleteMap()">${ICONS.close} 移除</button>
         <button class="btn btn-danger" onclick="App.batchDeleteReal()">${ICONS.trash} 删除</button>
+        <button class="btn btn-primary" onclick="App.batchRename()">${ICONS.edit} 重命名</button>
         <button class="btn btn-primary" onclick="App.selectAllOnPage()">${ICONS.check} 全选</button>
         <button class="btn" onclick="App.clearSelection()">${ICONS.close} 清空</button>
         <button class="btn" onclick="App.toggleBatchMode()">退出</button>

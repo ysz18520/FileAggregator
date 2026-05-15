@@ -52,7 +52,7 @@ except ImportError:
 # 软件信息
 APP_NAME = "FileAggregator"
 APP_TITLE = "文件收纳箱"
-APP_VERSION = "6.6.0"
+APP_VERSION = "6.7.0"
 
 # 数据存储位置: 用户主目录下的隐藏文件夹, 永不和软件本体混在一起
 # 这样即使用户把 exe 换个位置, 数据也不会丢
@@ -1255,12 +1255,12 @@ class Api:
                 continue
             file_name = os.path.basename(src_path)
             dest_file = os.path.join(dest_dir, file_name)
-            # 处理目标位置已有同名文件的情况
+            # 处理目标位置已有同名文件的情况: 使用收藏夹名+序号作为新文件名
             if os.path.exists(dest_file):
-                name, ext = os.path.splitext(file_name)
+                ext = os.path.splitext(file_name)[1]
                 c = 1
                 while os.path.exists(dest_file):
-                    dest_file = os.path.join(dest_dir, f"{name}_{c}{ext}")
+                    dest_file = os.path.join(dest_dir, f"{safe_name}_{c}{ext}")
                     c += 1
             try:
                 shutil.move(src_path, dest_file)
@@ -1340,6 +1340,57 @@ class Api:
         self.delete_file_map(file_path, category)
         return {'ok': True, 'msg': '已永久删除本地文件'}
 
+    def rename_file(self, file_path: str, new_name: str) -> Dict[str, Any]:
+        """
+        重命名本地文件，并同步更新收藏夹中的路径引用
+        new_name: 新文件名（可含或不含扩展名）
+        """
+        if not file_path or not new_name:
+            return {'ok': False, 'msg': '路径或新文件名为空'}
+        file_path = normalize_path(file_path)
+        if not os.path.exists(file_path):
+            return {'ok': False, 'msg': '文件不存在'}
+        if os.path.isdir(file_path):
+            return {'ok': False, 'msg': '目标不是文件'}
+
+        dir_path = os.path.dirname(file_path)
+        old_name = os.path.basename(file_path)
+        old_name_no_ext, old_ext = os.path.splitext(old_name)
+        new_name = new_name.strip()
+
+        # 如果用户没输入扩展名，保留原扩展名
+        if '.' not in new_name or new_name.startswith('.'):
+            new_name = new_name + old_ext
+
+        # 处理同名冲突
+        new_path = os.path.join(dir_path, new_name)
+        original_new_path = new_path
+        counter = 1
+        name_part, ext_part = os.path.splitext(new_name)
+        while os.path.exists(new_path) and normalize_path(new_path) != normalize_path(file_path):
+            new_path = os.path.join(dir_path, f"{name_part}_{counter}{ext_part}")
+            counter += 1
+
+        try:
+            os.rename(file_path, new_path)
+        except Exception as e:
+            return {'ok': False, 'msg': f'重命名失败: {e}'}
+
+        # 同步更新收藏夹中的路径引用
+        config = load_config()
+        favorites = config.get('favorites', {})
+        for cat in ['video', 'image', 'document', 'project']:
+            groups = favorites.get(cat, [])
+            for g in groups:
+                items = g.get('items', [])
+                for i, p in enumerate(items):
+                    if normalize_path(p) == normalize_path(file_path):
+                        items[i] = normalize_path(new_path)
+        config['favorites'] = favorites
+        save_config(config)
+
+        return {'ok': True, 'msg': '重命名成功', 'new_path': normalize_path(new_path)}
+
     def batch_delete_map(self, file_paths: List[str], category: str) -> Dict[str, Any]:
         """批量映射删除"""
         if not file_paths:
@@ -1367,6 +1418,55 @@ class Api:
             else:
                 failed += 1
         return {'ok': failed == 0, 'msg': f'删除完成: 成功 {success} 个, 失败 {failed} 个'}
+
+    def batch_rename_files(self, file_paths: List[str], base_name: str) -> Dict[str, Any]:
+        """批量重命名文件：base_name + _序号 + 原扩展名"""
+        if not file_paths:
+            return {'ok': True, 'msg': '没有需要处理的文件'}
+        if not base_name or not base_name.strip():
+            return {'ok': False, 'msg': '新文件名不能为空'}
+        base_name = base_name.strip()
+
+        config = load_config()
+        favorites = config.get('favorites', {})
+        moved = []
+        failed = []
+
+        for i, src_path in enumerate(file_paths, start=1):
+            if not os.path.exists(src_path):
+                failed.append({'path': src_path, 'reason': '源文件不存在'})
+                continue
+            dir_path = os.path.dirname(src_path)
+            _, ext = os.path.splitext(src_path)
+            new_name = f"{base_name}_{i}{ext}"
+            new_path = os.path.join(dir_path, new_name)
+            # 处理同名冲突
+            c = 1
+            while os.path.exists(new_path) and normalize_path(new_path) != normalize_path(src_path):
+                new_path = os.path.join(dir_path, f"{base_name}_{i}_{c}{ext}")
+                c += 1
+            try:
+                os.rename(src_path, new_path)
+                moved.append({'old': src_path, 'new': new_path})
+                # 同步更新收藏夹路径
+                for cat in ['video', 'image', 'document', 'project']:
+                    groups = favorites.get(cat, [])
+                    for g in groups:
+                        items = g.get('items', [])
+                        for j, p in enumerate(items):
+                            if normalize_path(p) == normalize_path(src_path):
+                                items[j] = normalize_path(new_path)
+            except Exception as e:
+                failed.append({'path': src_path, 'reason': str(e)})
+
+        config['favorites'] = favorites
+        save_config(config)
+        return {
+            'ok': len(moved) > 0,
+            'msg': f'重命名完成: 成功 {len(moved)} 个, 失败 {len(failed)} 个',
+            'moved': moved,
+            'failed': failed
+        }
 
     def batch_add_favorites(self, category: str, group_id: str, file_paths: List[str]) -> Dict[str, Any]:
         """批量添加到收藏夹"""
