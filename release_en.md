@@ -1,15 +1,12 @@
-## FileAggregator v6.6.0
+## FileAggregator v6.8.0
 
 A 100% offline desktop file aggregator for Windows. Drop a folder in, and your videos, images, and documents are automatically sorted — without ever copying, moving, or modifying your originals.
 
-### What's New in v6.6.0
+### What's New in v6.8.0
 
-- **Video Hover Preview Toggle** — Turn preview on/off from the sort bar. Off by default to eliminate memory pressure and UI lag.
-- **Preview Performance Boost** — Reduced frame count from 32 to 10 and resolution from 240px to 160px. ~80% smaller payload, 3x faster extraction.
-- **Sort by File Size** — New "Size" sort option for the video gallery (ascending/descending), covering main view, search results, and favorites.
-- **Memory Release Button** — One-click lightning bolt to flush media cache and preview frame cache, instantly freeing RAM.
-- **Per-Page Refresh** — Local refresh buttons on every view (video/image/document/project/favorites) to fix UI state drift without full rescan.
-- **Custom Icon Support** — Place `icon.png` and `ui_icon.png` in the project root; build script auto-generates multi-size `icon.ico` for the exe and window branding.
+- **Single-Instance Enforcement** — Clicking the exe again activates the existing window instead of spawning a new one. Powered by a Windows named mutex.
+- **Project Search Fix** — Global keyword search now includes project folders. The project view correctly renders filtered results in search mode.
+- **Project Batch Action Fixes** — Batch favorite operations now auto-exit batch mode. Batch delete/rename properly syncs the search results list.
 
 ### Core Features
 
@@ -34,4 +31,4 @@ A 100% offline desktop file aggregator for Windows. Drop a folder in, and your v
 
 ### Download
 
-Extract the entire `dist` folder and run `文件收纳箱v6.6.exe`. No Python or additional dependencies required.
+Extract the entire `dist` folder and run `文件收纳箱v6.8.exe`. No Python or additional dependencies required.

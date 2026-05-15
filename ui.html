@@ -1150,7 +1150,8 @@ const App = {
     },
     // 项目专区操作
     clickProjectByIdx(idx){
-        const item = state.projects[idx];
+        const list = state.isSearching ? state.searchResults.project : state.projects;
+        const item = list[idx];
         if(!item) return;
         if(state.batchMode){
             this.toggleSelect(item.path);
@@ -1159,23 +1160,29 @@ const App = {
         return this.showInFolder(item.path);
     },
     showProjectLocByIdx(idx){
-        const item = state.projects[idx];
+        const list = state.isSearching ? state.searchResults.project : state.projects;
+        const item = list[idx];
         if(!item) return;
         return this.showInFolder(item.path);
     },
     async deleteProjectMap(idx){
-        const item = state.projects[idx];
+        const list = state.isSearching ? state.searchResults.project : state.projects;
+        const item = list[idx];
         if(!item) return;
         const r = await Api.removeProjectFolder(item.path);
         toast(r.msg, r.ok ? 'success' : 'error');
         if(r.ok){
             state.projects = state.projects.filter(p => p.path !== item.path);
+            if(state.searchResults.project){
+                state.searchResults.project = state.searchResults.project.filter(p => p.path !== item.path);
+            }
             await this.loadFavGroups('project');
             this.refreshCurrentView();
         }
     },
     async deleteProjectReal(idx){
-        const item = state.projects[idx];
+        const list = state.isSearching ? state.searchResults.project : state.projects;
+        const item = list[idx];
         if(!item) return;
         const ok = await confirmDialog(
             '【高危】永久删除确认',
@@ -1188,12 +1195,16 @@ const App = {
         toast(r.msg, r.ok ? 'success' : 'error');
         if(r.ok){
             state.projects = state.projects.filter(p => p.path !== item.path);
+            if(state.searchResults.project){
+                state.searchResults.project = state.searchResults.project.filter(p => p.path !== item.path);
+            }
             await this.loadFavGroups('project');
             this.refreshCurrentView();
         }
     },
     async showProjectFavDialogByIdx(idx){
-        const item = state.projects[idx];
+        const list = state.isSearching ? state.searchResults.project : state.projects;
+        const item = list[idx];
         if(!item) return;
         await this.showFavDialog('project', item.path);
     },
@@ -1698,9 +1709,12 @@ const App = {
             }
             if(cat === 'project'){
                 state.projects.forEach(p => { if(pathSet.has(p.path)) p.is_favorited = true; });
+                if(state.searchResults.project){
+                    state.searchResults.project.forEach(p => { if(pathSet.has(p.path)) p.is_favorited = true; });
+                }
             }
             await this.loadFavGroups(cat);
-            this.updateBatchUI();
+            this.exitBatchMode();
             this.refreshCurrentView();
         }
     },
@@ -1732,6 +1746,10 @@ const App = {
             if(cat === 'project'){
                 const proj = state.projects.find(p => p.path === filePath);
                 if(proj) proj.is_favorited = false;
+                if(state.searchResults.project){
+                    const sp = state.searchResults.project.find(p => p.path === filePath);
+                    if(sp) sp.is_favorited = false;
+                }
             }
             this.refreshCurrentView();
         }
@@ -1868,7 +1886,7 @@ const App = {
         if(view === 'video') return paginate(state.isSearching ? state.searchResults.video : state.files.video).items;
         if(view === 'image') return paginate(state.isSearching ? state.searchResults.image : state.files.image).items;
         if(view === 'document') return paginate(state.isSearching ? state.searchResults.document : state.files.document).items;
-        if(view === 'project') return paginate(state.projects).items;
+        if(view === 'project') return paginate(state.isSearching ? state.searchResults.project : state.projects).items;
         if(view === 'fav_items') return paginate(state.favItems).items;
         return [];
     },
@@ -1911,6 +1929,7 @@ const App = {
     async renameFile(cat, idx, isFav){
         let list;
         if(isFav) list = state.favItems;
+        else if(cat === 'project') list = state.isSearching ? state.searchResults.project : state.projects;
         else if(state.isSearching) list = state.searchResults[cat];
         else list = state.files[cat];
         const file = list && list[idx];
@@ -1924,7 +1943,9 @@ const App = {
             const newPath = r.new_path;
             const newFileName = newPath.split(/[\\\\/]/).pop();
             // 同步更新所有可能包含该文件的列表
-            const allLists = [state.files[cat], state.searchResults[cat], state.favItems];
+            const allLists = cat === 'project'
+                ? [state.projects, state.searchResults.project, state.favItems]
+                : [state.files[cat], state.searchResults[cat], state.favItems];
             allLists.forEach(lst => {
                 if(!lst) return;
                 lst.forEach(f => {
@@ -1997,17 +2018,18 @@ const App = {
         const kw = currentSearchKeyword.trim();
         if(!kw){
             state.isSearching = false;
-            state.searchResults = {video:[], image:[], document:[]};
+            state.searchResults = {video:[], image:[], document:[], project:[]};
             this.refreshCurrentView();
             return;
         }
         state.isSearching = true;
         const r = await Api.searchFiles(kw);
-        const raw = r || {video:[], image:[], document:[]};
+        const raw = r || {video:[], image:[], document:[], project:[]};
         state.searchResults = {
             video: sortList(raw.video || []),
             image: sortList(raw.image || []),
-            document: sortList(raw.document || [])
+            document: sortList(raw.document || []),
+            project: sortList(raw.project || [])
         };
         state.currentPage = 1;
         this.refreshCurrentView();
@@ -2015,7 +2037,7 @@ const App = {
     clearSearch(){
         currentSearchKeyword = '';
         state.isSearching = false;
-        state.searchResults = {video:[], image:[], document:[]};
+        state.searchResults = {video:[], image:[], document:[], project:[]};
         const input = document.getElementById('searchInput');
         if(input) input.value = '';
         const box = document.getElementById('searchBox');
@@ -2040,7 +2062,10 @@ const App = {
             state.batchSelected = {};
             const pathSet = new Set(paths);
             if(state.view === 'fav_items') state.favItems = state.favItems.filter(f => !pathSet.has(f.path));
-            else if(state.view === 'project') state.projects = state.projects.filter(f => !pathSet.has(f.path));
+            else if(state.view === 'project'){
+                state.projects = state.projects.filter(f => !pathSet.has(f.path));
+                if(state.searchResults.project) state.searchResults.project = state.searchResults.project.filter(f => !pathSet.has(f.path));
+            }
             else if(state.isSearching) state.searchResults[cat] = state.searchResults[cat].filter(f => !pathSet.has(f.path));
             else state.files[cat] = state.files[cat].filter(f => !pathSet.has(f.path));
             await this.loadFavGroups(cat);
@@ -2071,7 +2096,10 @@ const App = {
             state.batchSelected = {};
             const pathSet = new Set(paths);
             if(state.view === 'fav_items') state.favItems = state.favItems.filter(f => !pathSet.has(f.path));
-            else if(state.view === 'project') state.projects = state.projects.filter(f => !pathSet.has(f.path));
+            else if(state.view === 'project'){
+                state.projects = state.projects.filter(f => !pathSet.has(f.path));
+                if(state.searchResults.project) state.searchResults.project = state.searchResults.project.filter(f => !pathSet.has(f.path));
+            }
             else if(state.isSearching) state.searchResults[cat] = state.searchResults[cat].filter(f => !pathSet.has(f.path));
             else state.files[cat] = state.files[cat].filter(f => !pathSet.has(f.path));
             await this.loadFavGroups(cat);
@@ -2090,7 +2118,9 @@ const App = {
         if(r.ok){
             const cat = state.view === 'fav_items' ? state.favCategory : state.view;
             // 同步更新所有列表中的路径和名称
-            const allLists = [state.files[cat], state.searchResults[cat], state.favItems];
+            const allLists = cat === 'project'
+                ? [state.projects, state.searchResults.project, state.favItems]
+                : [state.files[cat], state.searchResults[cat], state.favItems];
             r.moved.forEach(m => {
                 const newFileName = m.new.split(/[\\\\/]/).pop();
                 allLists.forEach(lst => {
@@ -2141,6 +2171,9 @@ const App = {
             }
             if(cat === 'project'){
                 state.projects.forEach(p => { if(pathSet.has(p.path)) p.is_favorited = true; });
+                if(state.searchResults.project){
+                    state.searchResults.project.forEach(p => { if(pathSet.has(p.path)) p.is_favorited = true; });
+                }
             }
             await this.loadFavGroups(cat);
             this.updateBatchUI();
@@ -2162,6 +2195,9 @@ const App = {
             if(cat === 'project'){
                 const pathSet = new Set(paths);
                 state.projects.forEach(p => { if(pathSet.has(p.path)) p.is_favorited = false; });
+                if(state.searchResults.project){
+                    state.searchResults.project.forEach(p => { if(pathSet.has(p.path)) p.is_favorited = false; });
+                }
             }
             await this.loadFavItems(cat, state.favGroupId);
             await this.loadFavGroups(cat);
@@ -2498,10 +2534,12 @@ function renderFoldersView(){
 }
 
 function renderProjectView(){
-    const fullList = sortList(state.projects);
+    const fullList = sortList(state.isSearching ? state.searchResults.project : state.projects);
     const { items: list, totalPages, page, total } = paginate(fullList);
     if(fullList.length === 0){
-        $content.innerHTML = renderEmpty('暂无项目文件夹', '在"我的目录"页面右侧添加项目文件夹');
+        const msg = state.isSearching ? '没有找到匹配的项目文件夹' : '暂无项目文件夹';
+        const sub = state.isSearching ? '换个关键词试试' : '在"我的目录"页面右侧添加项目文件夹';
+        $content.innerHTML = renderEmpty(msg, sub);
         return;
     }
     let html = buildSortBarHtml(total);

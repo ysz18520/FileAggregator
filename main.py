@@ -24,6 +24,8 @@ import shutil
 import mimetypes
 import subprocess
 import threading
+import ctypes
+from ctypes import wintypes
 from typing import List, Dict, Any, Optional
 
 import webview  # pywebview 桌面窗口框架
@@ -52,7 +54,7 @@ except ImportError:
 # 软件信息
 APP_NAME = "FileAggregator"
 APP_TITLE = "文件收纳箱"
-APP_VERSION = "6.7.0"
+APP_VERSION = "6.8.0"
 
 # 数据存储位置: 用户主目录下的隐藏文件夹, 永不和软件本体混在一起
 # 这样即使用户把 exe 换个位置, 数据也不会丢
@@ -1550,11 +1552,11 @@ class Api:
 
     def search_files(self, keyword: str) -> Dict[str, List[Dict[str, Any]]]:
         """
-        全局模糊搜索文件 (基于 scan_cache)
-        返回: {video: [...], image: [...], document: [...]}
+        全局模糊搜索文件 (基于 scan_cache + project_folders)
+        返回: {video: [...], image: [...], document: [...], project: [...]}
         """
         if not keyword:
-            return {'video': [], 'image': [], 'document': []}
+            return {'video': [], 'image': [], 'document': [], 'project': []}
         keyword_lower = keyword.lower()
         config = load_config()
         scan_cache = config.get('scan_cache', {})
@@ -1562,14 +1564,14 @@ class Api:
 
         # 构建已收藏路径集合
         fav_sets: Dict[str, set] = {}
-        for cat in ['video', 'image', 'document']:
+        for cat in ['video', 'image', 'document', 'project']:
             fav_sets[cat] = set()
             for g in favorites.get(cat, []):
                 for p in g.get('items', []):
                     fav_sets[cat].add(normalize_path(p))
 
-        result: Dict[str, List[Dict[str, Any]]] = {'video': [], 'image': [], 'document': []}
-        seen: Dict[str, set] = {'video': set(), 'image': set(), 'document': set()}
+        result: Dict[str, List[Dict[str, Any]]] = {'video': [], 'image': [], 'document': [], 'project': []}
+        seen: Dict[str, set] = {'video': set(), 'image': set(), 'document': set(), 'project': set()}
 
         for folder_data in scan_cache.values():
             for cat in ['video', 'image', 'document']:
@@ -1585,6 +1587,27 @@ class Api:
                         item_copy['is_favorited'] = norm_path in fav_sets[cat]
                         result[cat].append(item_copy)
 
+        # 搜索 project_folders
+        for path in config.get('project_folders', []):
+            norm_path = normalize_path(path)
+            if norm_path in seen['project']:
+                continue
+            name = os.path.basename(path)
+            if keyword_lower in name.lower():
+                seen['project'].add(norm_path)
+                try:
+                    stat = os.stat(path)
+                    result['project'].append({
+                        'name': name,
+                        'path': path,
+                        'size': stat.st_size,
+                        'modified': stat.st_mtime,
+                        'created': getattr(stat, 'st_birthtime', stat.st_ctime),
+                        'is_favorited': norm_path in fav_sets['project']
+                    })
+                except (OSError, IOError):
+                    continue
+
         # 按修改时间倒序
         for cat in result:
             result[cat].sort(key=lambda x: x.get('modified', 0), reverse=True)
@@ -1593,11 +1616,64 @@ class Api:
 
 
 # ============================================================
-# 五、主入口
+# 五、单实例互斥锁 + 窗口激活
+# ============================================================
+
+def _activate_existing_instance() -> bool:
+    """
+    查找并激活已存在的程序窗口。
+    通过 EnumWindows 遍历所有可见顶层窗口, 匹配标题包含 APP_TITLE 的窗口。
+    返回 True 表示成功找到并激活, False 表示未找到。
+    """
+    app_title = APP_TITLE
+    target_hwnd = [0]
+
+    EnumWindows = ctypes.windll.user32.EnumWindows
+    EnumWindowsProc = ctypes.WINFUNCTYPE(wintypes.BOOL, wintypes.HWND, wintypes.LPARAM)
+    GetWindowTextW = ctypes.windll.user32.GetWindowTextW
+    GetWindowTextLengthW = ctypes.windll.user32.GetWindowTextLengthW
+    IsWindowVisible = ctypes.windll.user32.IsWindowVisible
+
+    def _callback(hwnd, _):
+        if not IsWindowVisible(hwnd):
+            return True
+        length = GetWindowTextLengthW(hwnd)
+        if length == 0:
+            return True
+        buf = ctypes.create_unicode_buffer(length + 1)
+        GetWindowTextW(hwnd, buf, length + 1)
+        if app_title in buf.value:
+            target_hwnd[0] = hwnd
+            return False
+        return True
+
+    EnumWindows(EnumWindowsProc(_callback), 0)
+
+    if target_hwnd[0]:
+        hwnd = target_hwnd[0]
+        # SW_RESTORE = 9, 若窗口最小化则恢复
+        ctypes.windll.user32.ShowWindow(hwnd, 9)
+        ctypes.windll.user32.SetForegroundWindow(hwnd)
+        return True
+    return False
+
+
+# ============================================================
+# 六、主入口
 # ============================================================
 
 def main() -> None:
     """程序入口"""
+    # ---- 单实例检查 ----
+    # 创建命名互斥锁; 若已存在则激活旧窗口并退出
+    mutex_name = f"{APP_TITLE}_SingleInstance"
+    kernel32 = ctypes.windll.kernel32
+    # 句柄保存在局部变量即可, 进程存活期间互斥锁一直有效; 进程退出后操作系统自动释放
+    mutex = kernel32.CreateMutexW(None, False, mutex_name)
+    if kernel32.GetLastError() == 183:  # ERROR_ALREADY_EXISTS
+        _activate_existing_instance()
+        sys.exit(0)
+
     # 启动前先把数据目录建好, 防止首次启动 JSON 读写报错
     ensure_data_dir()
 
